@@ -262,15 +262,23 @@ export class AudioEngine {
   onEvents(s: GameState) {
     if (!this.ctx || this.muted) return;
     for (const e of s.events) this.play(e);
-    this.tension = s.phase === 'fight' && s.mode === 'versus' && s.f.some((f) => f.hp < 60);
+    this.tension = s.phase === 'fight' && s.mode !== 'training' && s.f.some((f) => f.hp < f.maxHp * 0.3);
   }
 
   private play(e: SimEvent) {
     const w = e.weight ?? 2;
     switch (e.type) {
       case 'swing': this.whoosh(w); break;
-      case 'hit': this.impact(e.kind === 'throw' ? 3 : w); break;
-      case 'ch': this.counter(); break;
+      case 'hit':
+        if (e.kind === 'ch' || e.kind === 'crit') this.counter();
+        else this.impact(e.kind === 'throw' ? 3 : w);
+        break;
+      case 'armor': this.clank(3); break;
+      case 'wall': this.impact(3); this.noiseHit(this.ctx!.currentTime, 0.25, 'lowpass', 300, 0.4); break;
+      case 'proj': this.whoosh(1); break;
+      case 'clash': this.clank(2); break;
+      case 'smoke': this.noiseHit(this.ctx!.currentTime, 0.6, 'lowpass', 900, 0.25, 200); break;
+      case 'reveal': this.noiseHit(this.ctx!.currentTime, 0.2, 'bandpass', 1200, 0.12); break;
       case 'block': this.clank(w); break;
       case 'throw': this.noiseHit(this.ctx!.currentTime, 0.12, 'lowpass', 700, 0.3); break;
       case 'throwExec': this.whoosh(3); break;

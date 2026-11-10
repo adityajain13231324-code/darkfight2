@@ -1,6 +1,6 @@
 // Ashen Ferry: cold teal mist, moonlight, river reeds. Procedural parallax layers.
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
-import { PX } from './rig';
+import { PX } from './figure';
 import { softBlob, verticalGradient } from './textures';
 import { STAGE_HALF, U } from '../sim/constants';
 

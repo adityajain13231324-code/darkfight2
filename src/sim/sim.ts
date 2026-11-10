@@ -2,7 +2,7 @@
 import { ROSTER, type MoveC } from '../content/roster';
 import * as C from './constants';
 import { A, BTNS, DOWN, K, LEFT, RIGHT, UP, relDir } from './input';
-import type { Act, Fighter, GameState, MatchOpts, Projectile, SimEvent } from './types';
+import type { Act, Fighter, GameState, MatchOpts, SimEvent } from './types';
 
 export const ACTIONABLE = new Set<Act>(['idle', 'walkF', 'walkB', 'crouch']);
 const FACE_ACTS = new Set<Act>(['idle', 'walkF', 'walkB', 'crouch', 'land', 'kdGround', 'getup']);
@@ -483,7 +483,7 @@ function applyStrike(s: GameState, h: Hit): void {
     knock(d, a.facing, C.KD_VY, C.KD_VX);
     s.adv = null;
   } else {
-    d.act = 'hitstun'; d.t = 0; d.stun = Math.max(1, res + remaining);
+    d.act = 'hitstun'; d.t = 0; d.stun = Math.max(1, (res as number) + remaining);
     d.crouchStun = isCrouching(d);
     d.pushRem = m.pushback; d.pushDir = a.facing; d.vx = 0; d.move = ''; d.queued = '';
     s.adv = { att: h.i, move: m.id, kind: h.kind, aFree: -1, dFree: -1, since: s.frame };
