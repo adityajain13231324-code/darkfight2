@@ -1,6 +1,6 @@
 export type Act =
   | 'idle' | 'walkF' | 'walkB' | 'crouch' | 'dash' | 'backdash' | 'jump' | 'land'
-  | 'move' | 'blockstun' | 'hitstun' | 'air' | 'splat' | 'kdGround' | 'getup' | 'roll'
+  | 'move' | 'blockstun' | 'hitstun' | 'air' | 'splat' | 'kdGround' | 'getup' | 'roll' | 'rollF' | 'rollB'
   | 'throwClinch' | 'thrownClinch' | 'throwExec' | 'thrownExec' | 'throwBreak' | 'win';
 
 export interface Fighter {
@@ -14,6 +14,7 @@ export interface Fighter {
   curIn: number; prevIn: number; pressed: number;
   buf: number; bufAge: number; bufDir: string;
   lastTapF: number; lastTapB: number; dashF: boolean; dashB: boolean; jumpDir: number;
+  tapDF: boolean; tapDB: boolean; lastTapDF: number; lastTapDB: number; rollPend: number; rollDir: number;
   pushRem: number; pushDir: number;
   breakReq: boolean; throwBack: boolean;
   arcFrom: number; arcTo: number; pend: number;

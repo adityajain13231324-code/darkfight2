@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { step } from '../src/sim/sim';
-import { A, DOWN, K, M, R, RIGHT, S, cmdBits, run, training } from './helpers';
+import { A, DOWN, K, LEFT, M, R, RIGHT, S, cmdBits, run, training } from './helpers';
 
 function close(f0 = 'corvin', f1 = 'corvin', gap = 200) {
   const s = training(f0, f1);
@@ -76,4 +76,26 @@ test('knockdown wake-up: back roll moves away from the attacker', () => {
   const x = s.f[1].x;
   run(s, 30, 0, RIGHT); // P2 faces left, so RIGHT is back
   expect(s.f[1].x).toBeGreaterThan(x + 800);
+});
+
+test('rolls: double-tap with down rolls; a single down-back press still guards', () => {
+  const s = training();
+  const DF = DOWN | RIGHT;
+  run(s, 2, DOWN); run(s, 1, DF); run(s, 1, DOWN); run(s, 1, DF); run(s, 6, DOWN);
+  expect(s.f[0].act).toBe('rollF');
+  const t = training();
+  run(t, 2, DOWN); run(t, 1, DOWN | LEFT); run(t, 10, DOWN | LEFT);
+  expect(t.f[0].act).toBe('crouch');
+});
+
+test('forward roll passes under a high and through the opponent', () => {
+  const s = training();
+  s.f[0].x = -1000; s.f[1].x = -1000 + 900 + 900; s.f[1].guard = false;
+  run(s, 2);
+  const DF = DOWN | RIGHT;
+  run(s, 1, DOWN); run(s, 1, DF); run(s, 1, DOWN); run(s, 1, DF);
+  run(s, 1, 0, A); // opponent throws a high jab
+  run(s, 40, DOWN);
+  expect(s.f[0].hp).toBe(1000);
+  expect(s.f[0].x).toBeGreaterThan(s.f[1].x); // rolled past
 });

@@ -21,6 +21,7 @@ export function newFighter(fid: string, side: 0 | 1): Fighter {
     stun: 0, crouchStun: false, hitLoc: 1, heavy: false,
     curIn: 0, prevIn: 0, pressed: 0, buf: 0, bufAge: 0, bufDir: '',
     lastTapF: -100, lastTapB: -100, dashF: false, dashB: false, jumpDir: 0,
+    tapDF: false, tapDB: false, lastTapDF: -100, lastTapDB: -100, rollPend: 0, rollDir: 0,
     pushRem: 0, pushDir: 0, breakReq: false, throwBack: false,
     arcFrom: 0, arcTo: 0, pend: 0, combo: 0, comboDmg: 0, takenHits: 0, takenDmg: 0,
     airHits: 0, splatUsed: false, wallHit: false, lastFree: -1, guard: true, ko: false, calm: 0,
@@ -77,7 +78,7 @@ const STAND: number[][] = [[-300, 2900, 300, 3700, 0], [-430, 1400, 430, 2900, 1
 const CROUCH: number[][] = [[-300, 1900, 300, 2450, 0], [-480, 900, 480, 1900, 1], [-500, 0, 500, 900, 2]];
 
 function isCrouching(f: Fighter): boolean {
-  if (f.act === 'crouch') return true;
+  if (f.act === 'crouch' || f.act === 'rollF' || f.act === 'rollB') return true;
   if (f.act === 'move') return moveOf(f).crouch && f.t > 2;
   if (f.act === 'blockstun' || f.act === 'hitstun') return f.crouchStun;
   return false;
@@ -90,6 +91,11 @@ export function hurtboxes(f: Fighter): Box[] {
       return [];
     case 'getup': if (f.t <= C.GETUP_INV) return []; break;
     case 'roll': if (f.t <= C.ROLL_INV) return []; break;
+    case 'rollF': case 'rollB': {
+      const T = f.act === 'rollF' ? C.ROLLF_T : C.ROLLB_T;
+      if (f.t <= T - C.ROLL_RECOVER) return [[f.x - 550, f.y, f.x + 550, f.y + 700, 2], [f.x - 500, f.y + 700, f.x + 500, f.y + 1300, 1]];
+      break;
+    }
     case 'air': {
       if (f.airHits >= C.JUGGLE_MAX) return [];
       return [[f.x - 750, f.y, f.x + 750, f.y + 1300, 1]];
@@ -182,9 +188,14 @@ function tryBuffered(s: GameState, i: number, inDash = false): boolean {
 function think(s: GameState, i: number): void {
   const f = s.f[i];
   f.lastFree = s.frame;
+  if (f.rollPend > 0) {
+    if (f.buf) f.rollPend = 0; // an attack was pressed: it is a down-forward/back move, not a roll
+    else if (--f.rollPend === 0) { setAct(f, f.rollDir > 0 ? 'rollF' : 'rollB'); f.vx = 0; return; }
+  }
   if (tryBuffered(s, i)) return;
   const d = relDir(f.curIn, f.facing);
   const fd = ROSTER[f.fid];
+  if ((f.tapDF || f.tapDB) && d[0] === 'd' && !f.rollPend) { f.rollPend = C.ROLL_WAIT; f.rollDir = f.tapDF ? 1 : -1; }
   if (f.dashF) { setAct(f, 'dash'); f.vx = f.facing * fd.dashV; return; }
   if (f.dashB) { setAct(f, 'backdash'); f.vx = -f.facing * C.BDASH_V; return; }
   if (d === 'u' || d === 'uf' || d === 'ub') { setAct(f, 'jump'); f.jumpDir = d === 'uf' ? 1 : d === 'ub' ? -1 : 0; f.vx = 0; return; }
@@ -295,6 +306,16 @@ function update(s: GameState, i: number): void {
       f.vx = -f.facing * Math.trunc((2 * C.ROLL_DIST * (C.ROLL_T - f.t + 1)) / (C.ROLL_T * (C.ROLL_T + 1)));
       if (f.t > C.ROLL_T) { toNeutral(f); think(s, i); }
       break;
+    case 'rollF':
+    case 'rollB': {
+      const fwdRoll = f.act === 'rollF';
+      const T = fwdRoll ? C.ROLLF_T : C.ROLLB_T;
+      const D = fwdRoll ? C.ROLLF_DIST : C.ROLLB_DIST;
+      // distance spread evenly with a slow-down at the end
+      f.vx = (fwdRoll ? 1 : -1) * f.facing * Math.trunc((2 * D * (T - f.t + 1)) / (T * (T + 1)));
+      if (f.t > T) { toNeutral(f); think(s, i); }
+      break;
+    }
     case 'thrownClinch':
       if (f.t <= C.THROW_BREAK && (f.pressed & (A | K)) && (f.curIn & (A | K)) === (A | K)) f.breakReq = true;
       break;
@@ -576,7 +597,7 @@ function physics(s: GameState): void {
   }
   const a = s.f[0];
   const b = s.f[1];
-  const skip = (f: Fighter) => f.act === 'thrownExec' || f.act === 'kdGround' || f.act === 'getup' || f.act === 'roll' || f.act === 'air';
+  const skip = (f: Fighter) => f.act === 'thrownExec' || f.act === 'kdGround' || f.act === 'getup' || f.act === 'roll' || f.act === 'air' || f.act === 'rollF' || f.act === 'rollB';
   if (!skip(a) && !skip(b) && Math.abs(a.y - b.y) < 1200) {
     const gap = Math.abs(a.x - b.x) - 2 * C.BODY_HALF;
     if (gap < 0) {
@@ -671,6 +692,10 @@ export function step(s: GameState, inputs: readonly [number, number]): void {
     const back = f.facing > 0 ? LEFT : RIGHT;
     const vert = f.curIn & (UP | DOWN);
     f.dashF = false; f.dashB = false;
+    // Rolls: tap forward (or back) twice while holding down.
+    f.tapDF = false; f.tapDB = false;
+    if (f.curIn & fwd && !(f.prevIn & fwd) && f.curIn & DOWN) { if (s.frame - f.lastTapDF <= C.DASH_WINDOW) { f.tapDF = true; f.lastTapDF = -100; } else f.lastTapDF = s.frame; }
+    if (f.curIn & back && !(f.prevIn & back) && f.curIn & DOWN) { if (s.frame - f.lastTapDB <= C.DASH_WINDOW) { f.tapDB = true; f.lastTapDB = -100; } else f.lastTapDB = s.frame; }
     if (f.curIn & fwd && !(f.prevIn & fwd) && !vert) { if (s.frame - f.lastTapF <= C.DASH_WINDOW) { f.dashF = true; f.lastTapF = -100; } else f.lastTapF = s.frame; }
     if (f.curIn & back && !(f.prevIn & back) && !vert) { if (s.frame - f.lastTapB <= C.DASH_WINDOW) { f.dashB = true; f.lastTapB = -100; } else f.lastTapB = s.frame; }
   }

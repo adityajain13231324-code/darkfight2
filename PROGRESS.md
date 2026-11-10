@@ -17,6 +17,9 @@ Canonical spec: [docs/SPEC.md](docs/SPEC.md). Status values: NOT STARTED · IN P
 | Combo scaling 100/90/80/70/60/50, 350 cap, 7-hit juggle budget | VERIFIED | juggle test |
 | Wall splat (once per combo) | IMPLEMENTED | observed in bot matches ("wall" events) |
 | Wake-up: rise, back roll, wake-up kick | VERIFIED (roll) | systems test covers the roll |
+| Evasive rolls (down + forward/back twice): low profile, roll through | VERIFIED | roll tests: highs whiff, passes opponent, single down-back still guards |
+| Sculpted silhouette models (profiled body parts, jaw, heels, fists) | IMPLEMENTED | screenshots inspected; original shapes, not game assets |
+| Flip jumps (front/back), roll somersaults, weighted stance bounce | IMPLEMENTED | screenshots mid-flip and mid-roll inspected |
 | Meter, magic (500), ranged ammo (3/round), signature cooldown | VERIFIED | systems tests |
 | Fighters: Corvin (sword baseline), Lynx (claws, smoke) | IMPLEMENTED | 21 moves each, playable, bot-usable |
 | Remaining principal kits (Hermit, Butcher, Wasp, Widow, Shogun, Titan) | NOT STARTED | next content wave |

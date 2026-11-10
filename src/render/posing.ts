@@ -23,8 +23,10 @@ export function poseFor(f: Fighter, alpha: number, time: number): Pose {
 
   switch (f.act) {
     case 'idle': {
-      const b = Math.sin(time * 2.1);
-      return { ...S, ...legsAt(rig, ffx, frx, fh - 0.03 - b * 0.02), lean: S.lean + b * 1.2, head: S.head - b * 0.8, fUA: S.fUA + b * 2, rUA: S.rUA - b * 1.5 };
+      // Weighted fighting-stance bounce: knees pump, torso and guard breathe on a slower cycle.
+      const b = Math.sin(time * 2.8);
+      const br = Math.sin(time * 1.4);
+      return { ...S, ...legsAt(rig, ffx, frx, fh - 0.06 - (b * 0.5 + 0.5) * 0.06), lean: S.lean + 1.5 + b * 1.6, head: S.head - b * 1.2, fUA: S.fUA + br * 3, fFA: S.fFA - br * 2, rUA: S.rUA - br * 2, twist: S.twist + br * 0.04 };
     }
     case 'walkF':
     case 'walkB': {
@@ -52,9 +54,16 @@ export function poseFor(f: Fighter, alpha: number, time: number): Pose {
       return mix(S, { lean: S.lean - 12 * (1 - u), ...legsAt(rig, ffx - 0.1, frx - 0.35 * (1 - u), fh - 0.1 * (1 - u), 0, Math.sin(u * Math.PI) * 0.2) }, 1);
     }
     case 'jump': {
-      if (f.t < C.JUMP_PRE) return lerpPose(S, CR, 0.55 * ease(clamp01(t / C.JUMP_PRE)));
-      const tuck = clamp01(1 - Math.abs(f.vy) / 175);
-      return mix(S, { fTh: 40 + tuck * 40, fSh: -60 - tuck * 50, rTh: 10 + tuck * 30, rSh: -70 - tuck * 30, lean: S.lean + 4 }, 1);
+      if (f.t < C.JUMP_PRE) return lerpPose(S, CR, 0.6 * ease(clamp01(t / C.JUMP_PRE)));
+      const air = (2 * C.JUMP_V) / C.GRAVITY;
+      const u = clamp01((t - C.JUMP_PRE) / air);
+      const tuckAmt = Math.sin(u * Math.PI); // tight tuck at the top, open for landing
+      const tucked = { ...S, fTh: 115, fSh: -145, rTh: 100, rSh: -140, lean: S.lean + 25, fUA: 60, fFA: 90, rUA: 40, rFA: 100 } as Pose;
+      const open = { ...S, fTh: 40, fSh: -60, rTh: 5, rSh: -50 } as Pose;
+      const p = lerpPose(open, tucked, tuckAmt * (f.jumpDir === 0 ? 0.7 : 1));
+      // Forward jump = front flip, back jump = back flip (one full turn), neutral = tuck.
+      const flip = f.jumpDir === 0 ? 0 : ease(clamp01((u - 0.08) / 0.84)) * 360 * (f.jumpDir > 0 ? -1 : 1);
+      return { ...p, rot: flip };
     }
     case 'land': return lerpPose(lerpPose(S, CR, 0.6), S, ease(clamp01(t / (C.LAND_T + 1))));
     case 'move': {
@@ -99,7 +108,18 @@ export function poseFor(f: Fighter, alpha: number, time: number): Pose {
       const k = clamp01(t / C.ROLL_T);
       const tucked = { ...CR, fTh: 110, fSh: -140, rTh: 100, rSh: -140, lean: 40 } as Pose;
       const p = k < 0.8 ? tucked : lerpPose(tucked, CR, ease((k - 0.8) / 0.2));
-      return { ...p, rot: k < 0.8 ? -360 * ease(k / 0.8) : 0 };
+      return { ...p, rot: k < 0.8 ? 360 * ease(k / 0.8) : 0 }; // wake-up back roll
+    }
+    case 'rollF':
+    case 'rollB': {
+      const T = f.act === 'rollF' ? C.ROLLF_T : C.ROLLB_T;
+      const k = clamp01(t / T);
+      const tucked = { ...CR, fTh: 115, fSh: -145, rTh: 105, rSh: -145, lean: 45, fUA: 50, fFA: 80, rUA: 30, rFA: 90 } as Pose;
+      const enter = ease(clamp01(k / 0.15));
+      const exit = ease(clamp01((k - 0.78) / 0.22));
+      const body = exit > 0 ? lerpPose(tucked, CR, exit) : lerpPose(CR, tucked, enter);
+      const spin = ease(clamp01((k - 0.08) / 0.72)) * 360 * (f.act === 'rollF' ? -1 : 1);
+      return { ...body, rot: k >= 0.8 ? 0 : spin };
     }
     case 'throwClinch': return mix(S, claws ? arms(16, [88, 100], [84, 96], 20) : { ...R(16, 85, 95, 175), fUA: 76, fFA: 10 }, 1);
     case 'thrownClinch': return mix(S, { lean: 20, head: 18, px: -0.05 }, 1);

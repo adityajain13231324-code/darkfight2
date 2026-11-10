@@ -58,3 +58,11 @@ export const METER_MAX = 1000;
 export const AMMO = 3;
 export const PUSH_MIN = 20;
 export const CALM_REFILL = 50;
+
+// Evasive rolls (down + forward/back)
+export const ROLLF_T = 26;
+export const ROLLF_DIST = 2400;
+export const ROLLB_T = 24;
+export const ROLLB_DIST = 1800;
+export const ROLL_RECOVER = 6; // last ticks use the normal crouch hurtbox
+export const ROLL_WAIT = 3;    // ticks to wait for an attack button before committing to a roll
