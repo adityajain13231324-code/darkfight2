@@ -30,18 +30,6 @@
       "status": "kit variant (sword kit), gameplay tested"
     },
     {
-      "id": "wasp",
-      "origin": "reference-inspired",
-      "family": "Naginata",
-      "status": "planned"
-    },
-    {
-      "id": "widow",
-      "origin": "reference-inspired",
-      "family": "Fans",
-      "status": "planned"
-    },
-    {
       "id": "shogun",
       "origin": "reference-inspired",
       "family": "Daisho",
@@ -69,7 +57,11 @@
   "weaponFamilies": {
     "implemented": [
       "Straight sword",
+      "Katana",
+      "Cleavers",
+      "Two-handed greatsword",
       "Claws",
+      "Fans",
       "Unarmed kicks (shared)"
     ],
     "target": 20
