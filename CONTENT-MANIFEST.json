@@ -1,17 +1,96 @@
 {
   "updated": "2026-11-11",
   "characters": [
-    { "id": "corvin", "origin": "original UMBRA", "family": "Straight sword", "status": "gameplay verified", "moves": 21, "signature": "Moonfall (armored leap, 500 meter)" },
-    { "id": "lynx", "origin": "reference-inspired (boss archetype)", "family": "Claws", "status": "gameplay verified", "moves": 21, "signature": "Smoke Veil (90-tick concealment, 12 s cooldown)" },
-    { "id": "hermit", "origin": "reference-inspired", "family": "Paired blades + lightning", "status": "planned" },
-    { "id": "butcher", "origin": "reference-inspired", "family": "Paired cleavers", "status": "planned" },
-    { "id": "wasp", "origin": "reference-inspired", "family": "Naginata", "status": "planned" },
-    { "id": "widow", "origin": "reference-inspired", "family": "Fans", "status": "planned" },
-    { "id": "shogun", "origin": "reference-inspired", "family": "Daisho", "status": "planned" },
-    { "id": "titan", "origin": "reference-inspired", "family": "Two-handed giant sword", "status": "planned" }
+    {
+      "id": "corvin",
+      "origin": "original UMBRA",
+      "family": "Straight sword",
+      "status": "gameplay verified",
+      "moves": 21,
+      "signature": "Moonfall (armored leap, 500 meter)"
+    },
+    {
+      "id": "lynx",
+      "origin": "reference-inspired (boss archetype)",
+      "family": "Claws",
+      "status": "gameplay verified",
+      "moves": 21,
+      "signature": "Smoke Veil (90-tick concealment, 12 s cooldown)"
+    },
+    {
+      "id": "hermit",
+      "origin": "reference-inspired",
+      "family": "Paired blades + lightning",
+      "status": "kit variant (sword kit), gameplay tested"
+    },
+    {
+      "id": "butcher",
+      "origin": "reference-inspired",
+      "family": "Paired cleavers",
+      "status": "kit variant (sword kit), gameplay tested"
+    },
+    {
+      "id": "wasp",
+      "origin": "reference-inspired",
+      "family": "Naginata",
+      "status": "planned"
+    },
+    {
+      "id": "widow",
+      "origin": "reference-inspired",
+      "family": "Fans",
+      "status": "planned"
+    },
+    {
+      "id": "shogun",
+      "origin": "reference-inspired",
+      "family": "Daisho",
+      "status": "kit variant (sword kit), gameplay tested"
+    },
+    {
+      "id": "titan",
+      "origin": "reference-inspired",
+      "family": "Two-handed giant sword",
+      "status": "kit variant (sword kit), gameplay tested"
+    },
+    {
+      "id": "widow",
+      "origin": "reference-inspired",
+      "family": "Fans",
+      "status": "kit variant (claw kit), gameplay tested"
+    },
+    {
+      "id": "wasp",
+      "origin": "reference-inspired",
+      "family": "Claws",
+      "status": "kit variant (claw kit), gameplay tested"
+    }
   ],
-  "weaponFamilies": { "implemented": ["Straight sword", "Claws", "Unarmed kicks (shared)"], "target": 20 },
-  "arenas": [ { "id": "ashen-ferry", "status": "implemented (procedural layers)" } ],
-  "audio": { "music": "procedural placeholder", "sfx": "procedural placeholder" },
+  "weaponFamilies": {
+    "implemented": [
+      "Straight sword",
+      "Claws",
+      "Unarmed kicks (shared)"
+    ],
+    "target": 20
+  },
+  "arenas": [
+    {
+      "id": "sunset",
+      "status": "implemented"
+    },
+    {
+      "id": "bamboo",
+      "status": "implemented"
+    },
+    {
+      "id": "ferry",
+      "status": "implemented"
+    }
+  ],
+  "audio": {
+    "music": "procedural placeholder",
+    "sfx": "procedural placeholder"
+  },
   "assets": "All art and audio are generated in code; no third-party or ripped assets are used."
 }

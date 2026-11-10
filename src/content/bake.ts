@@ -6,8 +6,9 @@ import { shapeSegment, solve } from './rig';
 import type { FighterDef } from './types';
 import { corvin } from './fighters/corvin';
 import { lynx } from './fighters/lynx';
+import { butcher, hermit, shogun, titan, wasp, widow } from './fighters/variants';
 
-export const FIGHTER_DEFS: FighterDef[] = [corvin, lynx];
+export const FIGHTER_DEFS: FighterDef[] = [corvin, lynx, hermit, shogun, butcher, titan, widow, wasp];
 
 export type Baked = Record<string, Record<string, number[][]>>;
 

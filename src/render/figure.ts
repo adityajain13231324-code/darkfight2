@@ -113,6 +113,25 @@ export function drawFigure(g: Graphics, j: Joints, vis: FighterVisual, weapon: W
     poly([add(j.head, fw, -r * 1.3), add(add(top, fw, -0.12), hd, 0.1), add(top, fw, 0.06), add(j.head, fw, r * 0.95), add(j.neck, fw, -0.12)]);
     poly([add(top, fw, -0.03), add(add(top, hd, 0.15), fw, -0.07), add(top, fw, 0.06)]);
   }
+  if (vis.hat) { // wide conical straw hat
+    const top = add(j.head, hd, r * 1.25);
+    poly([add(add(j.head, hd, r * 0.35), fw, -r * 3.2), top, add(add(j.head, hd, r * 0.35), fw, r * 3.0), add(add(j.head, hd, r * 0.2), fw, r * 2.6), add(add(j.head, hd, r * 0.2), fw, -r * 2.8)]);
+  }
+  if (vis.helmet) { // crest, dome and flared neck guard
+    g.circle(...tx(add(j.head, hd, r * 0.15)), (r * 1.12 + grow) * S).fill(fill);
+    poly([add(add(j.head, hd, r * 0.9), fw, -r * 0.2), add(add(add(j.head, hd, r * 2.2), fw, r * 0.9), hd, 0.05), add(add(j.head, hd, r * 1.1), fw, r * 0.4)]);
+    poly([add(add(j.head, hd, r * 0.9), fw, -r * 0.2), add(add(add(j.head, hd, r * 2.2), fw, -r * 1.1), hd, 0.05), add(add(j.head, hd, r * 1.1), fw, -r * 0.6)]);
+    poly([add(j.head, fw, -r * 0.9), add(add(j.head, fw, -r * 1.8), hd, -r * 1.3), add(add(j.head, fw, -r * 0.2), hd, -r * 1.2)]);
+  }
+  if (vis.ponytail) {
+    const base = add(add(j.head, fw, -r * 0.9), hd, r * 0.3);
+    poly([add(base, hd, 0.06), add(add(base, fw, -0.45), hd, -0.25), add(add(base, fw, -0.5), hd, -0.32), add(base, hd, -0.07)]);
+  }
+  if (vis.armor) { // shoulder plates
+    for (const sh of [j.fShoulder, j.rShoulder]) {
+      poly([add(add(sh, up, 0.12), n, 0.22 * k), add(add(sh, up, 0.12), n, -0.22 * k), add(add(sh, up, -0.25), n, -0.28 * k), add(add(sh, up, -0.25), n, 0.28 * k)]);
+    }
+  }
   if (vis.scarf && o.scarf.length > 1) {
     for (let i = 1; i < o.scarf.length; i++) {
       const w = (0.065 * (1 - i / o.scarf.length) + 0.02) * S;
@@ -123,7 +142,12 @@ export function drawFigure(g: Graphics, j: Joints, vis: FighterVisual, weapon: W
     }
   }
   leg(j.fHip, j.fKnee, j.fFoot, j.fToe);
-  if (weapon === 'sabre') {
+  const BLADES: Record<string, { w: number; curve: number; tipW: number }> = {
+    sabre: { w: 0.032, curve: 0.07, tipW: 0.2 }, katana: { w: 0.03, curve: 0.045, tipW: 0.25 },
+    cleaver: { w: 0.1, curve: 0.0, tipW: 0.95 }, greatsword: { w: 0.07, curve: 0.0, tipW: 0.35 },
+  };
+  const blade = BLADES[weapon as string];
+  if (blade) {
     const d = norm(sub(j.tip, j.rHand));
     const p = perp(d);
     const L = Math.hypot(j.tip[0] - j.rHand[0], j.tip[1] - j.rHand[1]);
@@ -131,14 +155,28 @@ export function drawFigure(g: Graphics, j: Joints, vis: FighterVisual, weapon: W
     const edge: V[] = [];
     for (let i = 0; i <= 8; i++) {
       const u = i / 8;
-      const c = add(add(j.rHand, d, L * u), p, Math.sin(u * Math.PI * 0.9) * 0.07);
-      const w = 0.032 * (1 - u * 0.8) + grow * 0.5;
+      const c = add(add(j.rHand, d, L * u), p, Math.sin(u * Math.PI * 0.9) * blade.curve);
+      const w = blade.w * (1 - u * (1 - blade.tipW)) + grow * 0.5;
       back.push(add(c, p, w));
       edge.unshift(add(c, p, -w * 0.55));
     }
     poly([...back, ...edge]);
     bone(add(j.rHand, d, -0.18), j.rHand, [[0, 0.03, 0.03], [1, 0.032, 0.032]], 2);
     bone(add(j.rHand, p, 0.1), add(j.rHand, p, -0.1), [[0, 0.03, 0.03], [1, 0.03, 0.03]], 2);
+    if (weapon === 'cleaver') { // second cleaver in the front hand
+      const fd2 = norm(sub(j.fHand, j.fElbow));
+      const fp = perp(fd2);
+      poly([add(j.fHand, fp, 0.03), add(add(j.fHand, fd2, 0.7), fp, 0.03), add(add(j.fHand, fd2, 0.75), fp, -0.12), add(add(j.fHand, fd2, 0.12), fp, -0.11)]);
+    }
+  } else if (weapon === 'fans') {
+    for (const [hand, tip] of [[j.fHand, j.fTip], [j.rHand, j.tip]] as [V, V][]) {
+      const d = norm(sub(tip, hand));
+      const p = perp(d);
+      const L = Math.hypot(tip[0] - hand[0], tip[1] - hand[1]);
+      const pts: V[] = [hand];
+      for (let i = 0; i <= 8; i++) { const a = -0.9 + (1.8 * i) / 8; pts.push(add(hand, add([d[0] * Math.cos(a) * L, d[1] * Math.cos(a) * L], p, Math.sin(a) * L))); }
+      poly(pts);
+    }
   } else {
     for (const [hand, tip] of [[j.fHand, j.fTip], [j.rHand, j.tip]] as [V, V][]) {
       const d = norm(sub(tip, hand));
@@ -167,7 +205,7 @@ export function drawAccents(g: Graphics, j: Joints, o: DrawOpts, accent: number,
   const a = tx(add(w, n, 0.2 * o.scale));
   const b = tx(add(w, n, -0.21 * o.scale));
   g.moveTo(a[0], a[1]).lineTo(b[0], b[1]).stroke({ width: 3, color: accent, alpha: 0.55 * o.alpha });
-  if (weapon === 'sabre') {
+  if (weapon !== 'claws' && weapon !== 'fans') {
     const A = tx(j.rHand);
     const B = tx(j.tip);
     g.moveTo(A[0], A[1]).lineTo(B[0], B[1]).stroke({ width: 1.1, color: gleam, alpha: 0.4 * o.alpha });

@@ -64,6 +64,10 @@ export interface FighterVisual {
   hood: boolean;
   scarf: boolean;
   bulk: number; // limb thickness multiplier
+  hat?: boolean;
+  helmet?: boolean;
+  armor?: boolean;
+  ponytail?: boolean;
 }
 
 export interface FighterDef {
@@ -74,6 +78,7 @@ export interface FighterDef {
   family: string;
   style: string;
   difficulty: number;
+  kit?: string; // shared move kit this fighter is built from
   maxHp: number;
   walkF: number;   // sub-units per tick
   walkB: number;

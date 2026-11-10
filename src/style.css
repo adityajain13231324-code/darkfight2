@@ -165,3 +165,31 @@ kbd { font-family: var(--sans); font-size: 10px; border: 1px solid rgba(223, 238
 #touch .tbtns button.big { height: 62px; font-size: 22px; }
 #touch .tbtns button.on { background: rgba(225, 216, 199, 0.3); }
 @media (max-width: 900px) { .card { width: 150px; } .card .d { display: none; } .selrow { gap: 16px; } }
+
+/* ---- Tekken-style select ---- */
+.tk { justify-content: flex-start; padding-top: 18px; gap: 10px; background: radial-gradient(ellipse at center, rgba(40, 22, 6, 0.35), rgba(6, 3, 1, 0.9)); }
+.tk-title { font-family: var(--serif); font-size: 30px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--bone); }
+.tk-stage { display: flex; align-items: center; justify-content: center; gap: 24px; width: min(1100px, 96vw); }
+.tk-side { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; border: 1px solid rgba(225, 216, 199, 0.12); background: linear-gradient(180deg, rgba(255, 200, 110, 0.18), rgba(10, 6, 2, 0.6)); min-height: 330px; transition: box-shadow 0.15s; }
+.tk-side.locked { box-shadow: 0 0 30px rgba(255, 210, 130, 0.35) inset; }
+.tk-who { font-family: var(--serif); font-size: 18px; letter-spacing: 0.2em; text-transform: uppercase; }
+.tk-port { height: 220px; object-fit: contain; filter: drop-shadow(0 0 18px rgba(255, 210, 130, 0.35)); }
+.p2s .tk-port { transform: scaleX(-1); }
+.tk-info { text-align: center; }
+.tk-info h2 { margin: 0; font-family: var(--serif); font-size: 34px; letter-spacing: 0.14em; text-transform: uppercase; }
+.tk-info .t { color: var(--dim); font-size: 12px; }
+.tk-info .w { color: #e3a15a; font-size: 12px; margin-top: 2px; }
+.tk-info .d { font-size: 12px; max-width: 320px; margin: 4px auto 0; color: var(--bone); }
+.tk-info .st { font-size: 11px; color: var(--dim); margin-top: 3px; }
+.tk-keys { font-size: 10px; color: var(--dim); }
+.tk-vs { font-family: var(--serif); font-size: 64px; font-weight: 700; color: #e3a15a; text-shadow: 0 0 30px rgba(227, 161, 90, 0.6); }
+.tk-grid { display: grid; grid-template-columns: repeat(4, 96px); gap: 8px; }
+.tk-tile { position: relative; height: 104px; padding: 0; border: 2px solid rgba(225, 216, 199, 0.15); background: linear-gradient(180deg, #e9b866, #9a5f26); cursor: pointer; overflow: hidden; }
+.tk-tile img { height: 84px; margin-top: 2px; }
+.tk-tile span { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.75); color: var(--bone); font-family: var(--serif); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+.tk-tile.c1 { border-color: var(--p1); box-shadow: 0 0 0 2px var(--p1) inset; }
+.tk-tile.c2 { border-color: var(--p2); box-shadow: 0 0 0 2px var(--p2) inset; }
+.tk-tile.c1.c2 { border-color: #fff; box-shadow: -3px 0 0 var(--p1) inset, 3px 0 0 var(--p2) inset; }
+.tk-tile.l1, .tk-tile.l2 { filter: brightness(1.15); }
+.tk-arrow { background: none; border: 1px solid rgba(225, 216, 199, 0.3); color: var(--bone); margin: 0 6px; cursor: pointer; font-size: 16px; padding: 0 8px; }
+@media (max-height: 700px) { .tk-port { height: 140px; } .tk-side { min-height: 230px; } .tk-tile { height: 84px; } .tk-tile img { height: 64px; } .tk-info .d { display: none; } }

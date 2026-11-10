@@ -13,7 +13,7 @@ export interface Pose {
 }
 export const POSE_KEYS: (keyof Pose)[] = ['lean', 'head', 'twist', 'fUA', 'fFA', 'rUA', 'rFA', 'wpn', 'fTh', 'fSh', 'rTh', 'rSh', 'rot', 'px'];
 
-export type WeaponKind = 'sabre' | 'claws';
+export type WeaponKind = 'sabre' | 'claws' | 'fans' | 'cleaver' | 'greatsword' | 'katana';
 export interface Rig {
   scale: number;
   thigh: number; shin: number; torso: number; ua: number; fa: number;
@@ -87,7 +87,7 @@ export function solve(p: Pose, rig: Rig): Joints {
   const rElbow = add(rShoulder, dir(rUA), rig.ua * k);
   const rHand = add(rElbow, dir(rFA), rig.fa * k);
   const tip = add(rHand, dir(rFA + p.wpn), rig.weaponLen * k);
-  const fTip = add(fHand, dir(fFA + p.wpn), (rig.weapon === 'claws' ? rig.weaponLen : 0.05) * k);
+  const fTip = add(fHand, dir(fFA + p.wpn), (rig.weapon === 'claws' || rig.weapon === 'fans' ? rig.weaponLen : 0.05) * k);
   const hipOff = 0.05 + p.twist * 0.04;
   const fHip = add(pelvis, fwd, hipOff * k);
   const rHip = add(pelvis, fwd, -hipOff * k);

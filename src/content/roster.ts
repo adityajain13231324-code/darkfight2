@@ -1,8 +1,7 @@
 // Compiles fighter definitions + baked hitboxes into integer data for the simulation.
 import baked from './baked.json';
-import { corvin } from './fighters/corvin';
-import { lynx } from './fighters/lynx';
 import type { FighterDef, Level, MoveDef } from './types';
+import { FIGHTER_DEFS } from './bake';
 import { BTN } from '../sim/input';
 
 const U = 1000;
@@ -84,8 +83,5 @@ export function compileFighter(def: FighterDef, shapes: Record<string, number[][
 }
 
 const B = baked as Record<string, Record<string, number[][]>>;
-export const ROSTER: Record<string, FighterData> = {
-  corvin: compileFighter(corvin, B.corvin ?? {}),
-  lynx: compileFighter(lynx, B.lynx ?? {}),
-};
+export const ROSTER: Record<string, FighterData> = Object.fromEntries(FIGHTER_DEFS.map((d) => [d.id, compileFighter(d, B[d.id] ?? {})]));
 export const FIGHTER_IDS = Object.keys(ROSTER);

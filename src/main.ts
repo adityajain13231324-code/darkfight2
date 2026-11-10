@@ -69,6 +69,7 @@ function matchOpts(): MatchOpts {
 
 function startMatch() {
   audio.start();
+  renderer.setArena(arenaForMatch());
   session = null;
   state = createState(matchOpts());
   bot = new Bot(1, botLevel, (Date.now() & 0xffff) || 7);
@@ -151,15 +152,22 @@ function cardHtml(fid: string): string {
   return `<button class="card" data-fid="${fid}"><h3>${d.name}</h3><div class="t">${d.title}</div><div class="w">${d.weaponName} · ${d.family}</div><div class="d">${d.style}</div><div class="st">Health ${d.maxHp} · Difficulty ${'◆'.repeat(d.difficulty)}${'◇'.repeat(3 - d.difficulty)}</div></button>`;
 }
 
+const portraits: Record<string, string[]> = {};
+const ARENA_IDS = ['sunset', 'bamboo', 'ferry', 'random'];
+const ARENA_NAMES: Record<string, string> = { sunset: 'Sunset Gate', bamboo: 'Bamboo Grove', ferry: 'Ashen Ferry', random: 'Random' };
+let arenaIdx = 0;
+const GRID_COLS = 4;
+
+async function makePortraits() {
+  for (const fid of FIGHTER_IDS) portraits[fid] = [await renderer.portrait(fid, 0x9fe3ff), await renderer.portrait(fid, 0xff8a5c)];
+}
+
 function openSelect(m: Mode) {
   mode = m;
   locked = [false, false];
   $('#selectTitle').textContent = m === 'local' ? 'Local Versus' : m === 'bot' ? 'Versus Bot' : 'Training';
-  for (const col of document.querySelectorAll<HTMLElement>('.selcol')) {
-    const p = Number(col.dataset.player);
-    col.querySelector('.cards')!.innerHTML = FIGHTER_IDS.map(cardHtml).join('');
-    col.querySelector('.who')!.firstChild!.textContent = p === 0 ? 'Player 1 ' : m === 'local' ? 'Player 2 ' : m === 'bot' ? 'Bot ' : 'Dummy ';
-  }
+  document.querySelector('.p2s .tk-who')!.textContent = m === 'local' ? 'Player 2' : m === 'bot' ? 'Bot' : 'Dummy';
+  $('.tk-grid').innerHTML = FIGHTER_IDS.map((fid) => `<button class="tk-tile" data-fid="${fid}"><img src="${portraits[fid]?.[0] ?? ''}" alt="" /><span>${ROSTER[fid].name}</span></button>`).join('');
   show('#roundsOpt', m !== 'training');
   show('#levelOpt', m === 'bot');
   refreshCards();
@@ -167,13 +175,20 @@ function openSelect(m: Mode) {
 }
 
 function refreshCards() {
-  for (const col of document.querySelectorAll<HTMLElement>('.selcol')) {
-    const p = Number(col.dataset.player);
-    for (const c of col.querySelectorAll<HTMLElement>('.card')) {
-      c.classList.toggle('sel', c.dataset.fid === picks[p]);
-      c.classList.toggle('locked', c.dataset.fid === picks[p] && locked[p]);
-    }
+  for (const t of document.querySelectorAll<HTMLElement>('.tk-tile')) {
+    t.classList.toggle('c1', t.dataset.fid === picks[0]);
+    t.classList.toggle('c2', t.dataset.fid === picks[1]);
+    t.classList.toggle('l1', t.dataset.fid === picks[0] && locked[0]);
+    t.classList.toggle('l2', t.dataset.fid === picks[1] && locked[1]);
   }
+  for (const side of document.querySelectorAll<HTMLElement>('.tk-side')) {
+    const p = Number(side.dataset.player);
+    const d = ROSTER[picks[p]].def;
+    (side.querySelector('.tk-port') as HTMLImageElement).src = portraits[picks[p]]?.[p] ?? '';
+    side.classList.toggle('locked', locked[p]);
+    side.querySelector('.tk-info')!.innerHTML = `<h2>${d.name}</h2><div class="t">${d.title}</div><div class="w">${d.weaponName} · ${d.family}</div><div class="d">${d.style}</div><div class="st">Health ${d.maxHp} · ${'◆'.repeat(d.difficulty)}${'◇'.repeat(3 - d.difficulty)}${d.kit ? ' · ' + ROSTER[d.kit].name + ' kit' : ''}</div>`;
+  }
+  $('#arenaName').textContent = ARENA_NAMES[ARENA_IDS[arenaIdx]];
 }
 
 function cyclePick(p: number, dir: number) {
@@ -186,7 +201,12 @@ function cyclePick(p: number, dir: number) {
 function lockPick(p: number) {
   locked[p] = true;
   refreshCards();
-  if (mode !== 'local' || (locked[0] && locked[1])) setTimeout(() => { if (screen === 'select') startMatch(); }, 250);
+  if (mode !== 'local' || (locked[0] && locked[1])) setTimeout(() => { if (screen === 'select') startMatch(); }, 350);
+}
+
+function arenaForMatch(): string {
+  const id = ARENA_IDS[arenaIdx];
+  return id === 'random' ? ARENA_IDS[Math.floor(Math.random() * 3)] : id;
 }
 
 // ---------- online ----------
@@ -226,6 +246,7 @@ function maybeHostStart() {
 
 function beginOnline(fighters: [string, string], r: number) {
   audio.start();
+  renderer.setArena('sunset');
   mode = 'online';
   picks = fighters;
   rounds = r;
@@ -340,11 +361,13 @@ function toMenu() {
 function wireUi() {
   document.body.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
+    const tile = t.closest<HTMLElement>('.tk-tile');
+    if (tile) { const p = (e as MouseEvent).shiftKey ? 1 : 0; picks[p] = tile.dataset.fid!; locked[p] = false; refreshCards(); return; }
+    const arrow = t.closest<HTMLElement>('[data-arena]');
+    if (arrow) { arenaIdx = (arenaIdx + Number(arrow.dataset.arena) + ARENA_IDS.length) % ARENA_IDS.length; refreshCards(); return; }
     const card = t.closest<HTMLElement>('.card');
     if (card) {
-      const col = card.closest<HTMLElement>('.selcol');
-      if (col) { const p = Number(col.dataset.player); picks[p] = card.dataset.fid!; locked[p] = false; refreshCards(); }
-      else if (card.closest('#onlPick')) { onlinePick = card.dataset.fid!; meReady = false; sendPick(); renderOnlinePick(); }
+      if (card.closest('#onlPick')) { onlinePick = card.dataset.fid!; meReady = false; sendPick(); renderOnlinePick(); }
       return;
     }
     const b = t.closest<HTMLElement>('button[data-action]');
@@ -375,6 +398,10 @@ function wireUi() {
     if (screen === 'select') {
       if (code === 'KeyA') cyclePick(0, -1);
       if (code === 'KeyD') cyclePick(0, 1);
+      if (code === 'KeyW') cyclePick(0, -GRID_COLS);
+      if (code === 'KeyS') cyclePick(0, GRID_COLS);
+      if (code === 'ArrowUp') cyclePick(1, -GRID_COLS);
+      if (code === 'ArrowDown') cyclePick(1, GRID_COLS);
       if (code === 'KeyJ') lockPick(0);
       if (mode === 'local') {
         if (code === 'ArrowLeft') cyclePick(1, -1);
@@ -418,6 +445,7 @@ function wireUi() {
 
 async function boot() {
   await renderer.init($('#game'));
+  await makePortraits();
   wireUi();
   setScreen('menu');
   renderer.app.ticker.add((t) => tick(t.deltaMS));

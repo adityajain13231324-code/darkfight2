@@ -1,2 +1,2 @@
 export type { FighterVisual } from '../content/types';
-export type WeaponKindAlias = 'sabre' | 'claws';
+export type { WeaponKind as WeaponKindAlias } from '../content/rig';

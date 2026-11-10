@@ -4,11 +4,21 @@ import { PX } from './figure';
 import { softBlob, verticalGradient } from './textures';
 import { STAGE_HALF, U } from '../sim/constants';
 
-export const STAGE_THEME = {
-  key: 0x9fd8d0, // moonlight rim colour
-  fleck: 0x7fc9c0,
-  fog: 0x9dc4c0,
+export interface ArenaTheme {
+  id: string; name: string;
+  sky: [number, string][]; sun: number; sunGlow: number; sunSize: number;
+  far: number; far2: number; water: [number, string][]; bank: number; dock: number; dockEdge: number;
+  fog: number; fogAlpha: number; fg: number; key: number; fleck: number; mote: number;
+}
+export const ARENAS: Record<string, ArenaTheme> = {
+  sunset: { id: 'sunset', name: 'Sunset Gate', sky: [[0, '#f3b24f'], [0.45, '#f7cf73'], [0.8, '#fbe6a6'], [1, '#f6d58a']], sun: 0xfff3c4, sunGlow: 0xffd27a, sunSize: 70,
+    far: 0xd59a4c, far2: 0xb7783a, water: [[0, '#c98a44'], [1, '#8f5a2a']], bank: 0x3a220f, dock: 0x24150a, dockEdge: 0xffd58a, fog: 0xffe2a8, fogAlpha: 0.22, fg: 0x0b0603, key: 0xffd58a, fleck: 0xffc26b, mote: 0xfff0c0 },
+  bamboo: { id: 'bamboo', name: 'Bamboo Grove', sky: [[0, '#a9d65a'], [0.5, '#d4ef8c'], [0.85, '#eaf7b8'], [1, '#c9e47e']], sun: 0xf8ffd8, sunGlow: 0xe6ff9a, sunSize: 55,
+    far: 0x7fae3f, far2: 0x5d8a2c, water: [[0, '#6f9c36'], [1, '#3f6a1c']], bank: 0x1d3010, dock: 0x16220b, dockEdge: 0xeaff9a, fog: 0xf0ffc8, fogAlpha: 0.25, fg: 0x050a02, key: 0xeaff9a, fleck: 0xd8f07a, mote: 0xf6ffd0 },
+  ferry: { id: 'ferry', name: 'Ashen Ferry', sky: [[0, '#0b1c20'], [0.45, '#1c3a3e'], [0.8, '#3b6462'], [1, '#4a7470']], sun: 0xdcefe9, sunGlow: 0x9fd8d0, sunSize: 44,
+    far: 0x24464a, far2: 0x18363a, water: [[0, '#2a5052'], [1, '#10272a']], bank: 0x081214, dock: 0x091316, dockEdge: 0x9fd8d0, fog: 0x9dc4c0, fogAlpha: 0.16, fg: 0x020405, key: 0x9fd8d0, fleck: 0x7fc9c0, mote: 0xcfeee6 },
 };
+export const STAGE_THEME = { key: 0xffd58a, fleck: 0xffc26b, fog: 0xffe2a8 };
 
 interface Layer { c: Container; factor: number }
 
@@ -43,18 +53,20 @@ export class Stage {
   private blob: Texture;
   private moon: Container;
 
-  constructor() {
+  constructor(public theme: ArenaTheme = ARENAS.sunset) {
+    const T = theme;
+    STAGE_THEME.key = T.key; STAGE_THEME.fleck = T.fleck; STAGE_THEME.fog = T.fog;
     this.blob = softBlob(256);
-    this.sky = new Sprite(verticalGradient([[0, '#020607'], [0.45, '#0a1a1e'], [0.8, '#163235'], [1, '#1d3d3f']]));
+    this.sky = new Sprite(verticalGradient(T.sky));
     this.root.addChild(this.sky);
 
     // Moon + glow
     const moon = new Container();
     const glow = new Sprite(this.blob);
-    glow.anchor.set(0.5); glow.width = glow.height = 700; glow.tint = 0x9fd8d0; glow.alpha = 0.22;
+    glow.anchor.set(0.5); glow.width = glow.height = 700; glow.tint = T.sunGlow; glow.alpha = 0.45;
     const glow2 = new Sprite(this.blob);
-    glow2.anchor.set(0.5); glow2.width = glow2.height = 220; glow2.tint = 0xdff5ef; glow2.alpha = 0.5;
-    const disc = new Graphics().circle(0, 0, 44).fill({ color: 0xdcefe9 });
+    glow2.anchor.set(0.5); glow2.width = glow2.height = 220; glow2.tint = T.sun; glow2.alpha = 0.7;
+    const disc = new Graphics().circle(0, 0, T.sunSize).fill({ color: T.sun });
     disc.circle(-12, -8, 9).fill({ color: 0xc4ddd6, alpha: 0.6 }).circle(14, 12, 6).fill({ color: 0xc4ddd6, alpha: 0.5 });
     const moonInner = new Container();
     moonInner.addChild(glow, glow2, disc);
@@ -68,17 +80,17 @@ export class Stage {
     const far = new Graphics();
     far.moveTo(-3200, 0);
     for (let x = -3200; x <= 3200; x += 80) far.lineTo(x, -260 - Math.sin(x * 0.0017) * 120 - Math.sin(x * 0.0061) * 40 - rnd() * 20);
-    far.lineTo(3200, 0).closePath().fill({ color: 0x12292c });
+    far.lineTo(3200, 0).closePath().fill({ color: T.far });
     this.addLayer(far, 0.08);
     const far2 = new Graphics();
     far2.moveTo(-3200, 0);
     for (let x = -3200; x <= 3200; x += 60) far2.lineTo(x, -150 - Math.sin(x * 0.0031 + 2) * 70 - rnd() * 18);
-    far2.lineTo(3200, 0).closePath().fill({ color: 0x0d1f22 });
+    far2.lineTo(3200, 0).closePath().fill({ color: T.far2 });
     this.addLayer(far2, 0.16);
 
     // River with moon shimmer and a distant ferry
     const river = new Container();
-    const water = new Sprite(verticalGradient([[0, '#1a3739'], [1, '#08171a']], 128));
+    const water = new Sprite(verticalGradient(T.water, 128));
     water.width = 7000; water.height = 150; water.position.set(-3500, -150);
     river.addChild(water);
     const boat = new Graphics();
@@ -95,7 +107,7 @@ export class Stage {
     // River mist band
     for (let i = 0; i < 3; i++) {
       const f = new Sprite(this.blob);
-      f.anchor.set(0.5); f.width = 1800; f.height = 160; f.tint = STAGE_THEME.fog; f.alpha = 0.16;
+      f.anchor.set(0.5); f.width = 1800; f.height = 160; f.tint = T.fog; f.alpha = T.fogAlpha;
       f.position.set(-1500 + i * 1500, -120);
       river.addChild(f);
       this.fogs.push({ s: f, speed: 6 + i * 3, base: f.x });
@@ -103,22 +115,22 @@ export class Stage {
 
     // Near bank: posts and reeds behind the dock
     const bank = new Graphics();
-    for (let x = -2600; x <= 2600; x += 110 + rnd() * 120) reedClump(bank, x, -10, 90 + rnd() * 90, 0x081214, 1, rnd);
-    for (let x = -2400; x <= 2400; x += 520 + rnd() * 200) bank.rect(x, -150 - rnd() * 40, 14, 160).fill({ color: 0x060d0f });
+    for (let x = -2600; x <= 2600; x += 110 + rnd() * 120) reedClump(bank, x, -10, 90 + rnd() * 90, T.bank, 1, rnd);
+    for (let x = -2400; x <= 2400; x += 520 + rnd() * 200) bank.rect(x, -150 - rnd() * 40, 14, 160).fill({ color: T.bank });
     this.addLayer(bank, 0.6);
 
     // Dock (world layer, factor 1): planks + wall posts at the stage edges
     const dock = new Graphics();
     const half = (STAGE_HALF / U) * PX;
-    dock.rect(-half - 400, 0, half * 2 + 800, 260).fill({ color: 0x091316 });
+    dock.rect(-half - 400, 0, half * 2 + 800, 260).fill({ color: T.dock });
     for (let x = -half - 400; x < half + 400; x += 46) dock.moveTo(x, 4).lineTo(x - 30, 260).stroke({ width: 1, color: 0x050b0d, alpha: 0.8 });
-    dock.moveTo(-half - 400, 1).lineTo(half + 400, 1).stroke({ width: 2, color: STAGE_THEME.key, alpha: 0.18 });
+    dock.moveTo(-half - 400, 1).lineTo(half + 400, 1).stroke({ width: 2, color: T.dockEdge, alpha: 0.35 });
     for (const sx of [-1, 1]) {
       const x = sx * (half + 18);
       dock.rect(x - 16, -330, 32, 590).fill({ color: 0x040809 });
       dock.rect(x - 22, -342, 44, 16).fill({ color: 0x040809 });
       dock.moveTo(x, -250).quadraticCurveTo(x - sx * 140, -200, x - sx * 300, -260).stroke({ width: 3, color: 0x040809 });
-      dock.moveTo(x - sx * 15, -330).lineTo(x - sx * 15, 0).stroke({ width: 1.5, color: STAGE_THEME.key, alpha: 0.12 });
+      dock.moveTo(x - sx * 15, -330).lineTo(x - sx * 15, 0).stroke({ width: 1.5, color: T.dockEdge, alpha: 0.2 });
     }
     this.addLayer(dock, 1);
 
@@ -126,7 +138,7 @@ export class Stage {
     const lowFog = new Container();
     for (let i = 0; i < 4; i++) {
       const f = new Sprite(this.blob);
-      f.anchor.set(0.5); f.width = 1400; f.height = 220; f.tint = STAGE_THEME.fog; f.alpha = 0.12;
+      f.anchor.set(0.5); f.width = 1400; f.height = 220; f.tint = T.fog; f.alpha = T.fogAlpha * 0.7;
       f.position.set(-1600 + i * 1100, -60);
       lowFog.addChild(f);
       this.fogs.push({ s: f, speed: 12 + i * 4, base: f.x });
@@ -138,7 +150,7 @@ export class Stage {
     const fgReeds = new Graphics();
     fg.addChild(fgReeds);
     const rnd2 = seeded(31);
-    for (let x = -3000; x <= 3000; x += 260 + rnd2() * 380) reedClump(fgReeds, x, 120, 160 + rnd2() * 120, 0x020405, 1, rnd2);
+    for (let x = -3000; x <= 3000; x += 260 + rnd2() * 380) reedClump(fgReeds, x, 120, 160 + rnd2() * 120, T.fg, 1, rnd2);
     const fgL: Layer = { c: fg, factor: 1.35 };
     this.front.addChild(fg);
     this.layers.push(fgL);
@@ -187,7 +199,7 @@ export class Stage {
       if (p.x > 1.05) p.x = -0.05;
       if (p.y < -0.05) { p.y = 1.05; p.x = Math.random(); }
       const a = 0.25 + 0.35 * Math.abs(Math.sin(time * 1.5 + p.a * 10));
-      m.circle(p.x * w, p.y * h, 1.4).fill({ color: 0xcfeee6, alpha: a });
+      m.circle(p.x * w, p.y * h, 1.4).fill({ color: this.theme.mote, alpha: a });
     }
   }
 }

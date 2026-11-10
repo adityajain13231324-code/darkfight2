@@ -5,7 +5,7 @@ import * as C from '../sim/constants';
 import type { GameState } from '../sim/types';
 import { drawAccents, drawFigure, PX } from './figure';
 import { animKey, poseFor } from './posing';
-import { Stage, STAGE_THEME } from './stage';
+import { ARENAS, Stage, STAGE_THEME } from './stage';
 import { grain, vignette } from './textures';
 import { Trail, Vfx } from './vfx';
 
@@ -58,10 +58,10 @@ class FighterView {
     this.updateScarf(j, x, y, f.facing, dt);
     const smoke = f.smoke > 0;
     const alphaBody = smoke ? 0.14 + Math.sin(time * 9) * 0.04 : 1;
-    const opts = { x, y, facing: f.facing, color: 0x090b10, alpha: alphaBody, coat: this.coat, scarf: this.scarf, scale: def.rig.scale };
+    const opts = { x, y, facing: f.facing, color: 0x000000, alpha: alphaBody, coat: this.coat, scarf: this.scarf, scale: def.rig.scale };
     this.rim.clear(); this.body.clear(); this.accents.clear();
     if (!smoke) {
-      drawFigure(this.rim, j, def.visual, def.rig.weapon, { ...opts, color: STAGE_THEME.key, alpha: 0.3, grow: 0.025 });
+      drawFigure(this.rim, j, def.visual, def.rig.weapon, { ...opts, color: STAGE_THEME.key, alpha: 0.16, grow: 0.02 });
       this.rim.position.set(2, -1.5);
     }
     drawFigure(this.body, j, def.visual, def.rig.weapon, opts);
@@ -128,7 +128,7 @@ export class Renderer {
   async init(parent: HTMLElement) {
     await this.app.init({ resizeTo: window, background: '#05080b', antialias: true, autoDensity: true, resolution: Math.min(2, window.devicePixelRatio || 1) });
     parent.appendChild(this.app.canvas);
-    this.stage = new Stage();
+    this.stage = new Stage(ARENAS.sunset);
     const root = this.app.stage;
     root.addChild(this.stage.root, this.world);
     for (const fv of this.fighters) this.world.addChild(fv.rim);
@@ -144,6 +144,38 @@ export class Renderer {
     this.grain = new TilingSprite({ texture: grain(), width: 100, height: 100 });
     this.grain.alpha = 0.03;
     root.addChild(this.grain);
+  }
+
+  setArena(id: string) {
+    const theme = ARENAS[id] ?? ARENAS.sunset;
+    if (this.stage.theme.id === theme.id) return;
+    const root = this.app.stage;
+    const old = this.stage;
+    const next = new Stage(theme);
+    root.addChildAt(next.root, root.getChildIndex(old.root));
+    root.removeChild(old.root);
+    root.addChildAt(next.front, root.getChildIndex(old.front));
+    root.removeChild(old.front);
+    old.root.destroy({ children: true });
+    old.front.destroy({ children: true });
+    this.stage = next;
+  }
+
+  /** Silhouette portrait of a fighter in stance, as a data URL (for menus). */
+  async portrait(fid: string, accent: number): Promise<string> {
+    const def = ROSTER[fid].def;
+    const g = new Graphics();
+    const j = solve(def.stance, def.rig);
+    const o = { x: 0, y: 0, facing: 1, color: 0x000000, alpha: 1, coat: -8, scarf: [] as V[], scale: def.rig.scale };
+    drawFigure(g, j, def.visual, def.rig.weapon, o);
+    const acc = new Graphics();
+    drawAccents(acc, j, o, accent, 0xffd58a, def.rig.weapon);
+    const c = new Container();
+    c.addChild(g, acc);
+    c.scale.set(1.6);
+    const url = await this.app.renderer.extract.base64({ target: c, resolution: 1 });
+    c.destroy({ children: true });
+    return url;
   }
 
   snapshot(s: GameState) { this.prev = [s.f[0].x, s.f[0].y, s.f[1].x, s.f[1].y]; }

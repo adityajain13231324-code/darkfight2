@@ -21,10 +21,13 @@ Canonical spec: [docs/SPEC.md](docs/SPEC.md). Status values: NOT STARTED · IN P
 | Sculpted silhouette models (profiled body parts, jaw, heels, fists) | IMPLEMENTED | screenshots inspected; original shapes, not game assets |
 | Flip jumps (front/back), roll somersaults, weighted stance bounce | IMPLEMENTED | screenshots mid-flip and mid-roll inspected |
 | Meter, magic (500), ranged ammo (3/round), signature cooldown | VERIFIED | systems tests |
-| Fighters: Corvin (sword baseline), Lynx (claws, smoke) | IMPLEMENTED | 21 moves each, playable, bot-usable |
-| Remaining principal kits (Hermit, Butcher, Wasp, Widow, Shogun, Titan) | NOT STARTED | next content wave |
-| Weapon families | IN PROGRESS | 2 of 20 (straight sword, claws) |
-| Arenas | IN PROGRESS | 1 of 8 (Ashen Ferry) |
+| Fighters: Corvin (sword), Lynx (claws, smoke) — unique kits | IMPLEMENTED | 21 moves each, playable, bot-usable |
+| Fighters: Hermit, Shogun, Butcher, Titan (sword kit), Widow, Wasp (claw kit) | IMPLEMENTED (kit variants) | own rig size, weapon, gear, health, speed, damage; frame data + geometry tested; unique movesets NOT STARTED |
+| Tekken-style select (portraits, grid, two cursors, arena picker) | IMPLEMENTED | screenshot inspected |
+| Bright painted arenas: Sunset Gate, Bamboo Grove (+ Ashen Ferry) | IMPLEMENTED | screenshots inspected |
+| Unique movesets/signatures for the six variant fighters | NOT STARTED | next content wave (Hermit lightning, Butcher quake, Wasp wall dive, Widow teleport, Shogun spectral slash, Titan shield/grab) |
+| Weapon families | IN PROGRESS | 6 drawn (sword, katana, cleavers, greatsword, claws, fans); 2 unique move kits |
+| Arenas | IN PROGRESS | 3 of 8 |
 | Local versus, first to 1–5 | VERIFIED | browser match played to results screen |
 | Practice bots, 4 difficulties | IMPLEMENTED | full match vs Normal bot completed; reaction ranges per spec |
 | Training: dummy modes, hitboxes, frame data, slow-mo, freeze/step, wall resets | IMPLEMENTED | panel exercised in browser |
