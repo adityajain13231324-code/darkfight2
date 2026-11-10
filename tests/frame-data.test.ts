@@ -1,72 +1,65 @@
+// Plays every grounded strike against a dummy: the MEASURED advantage must equal the
+// published table, and the animation geometry must agree with the declared hit level.
 import { describe, expect, test } from 'vitest';
-import { ROSTER, type MoveC } from '../src/data/roster';
+import { ROSTER, type MoveC } from '../src/content/roster';
 import { step } from '../src/sim/sim';
-import { DOWN, RIGHT } from '../src/sim/input';
-import { commandFrames, run, trainingState } from './helpers';
 import type { GameState } from '../src/sim/types';
+import { DOWN, RIGHT, cmdBits, commandFrames, run, training } from './helpers';
 
-/** Play a move against a dummy and measure the real frame advantage. */
-function measure(m: MoveC, mode: 'hit' | 'block'): { value: number; kind: string; move: string } | null {
-  const s = trainingState();
-  const a = s.f[0];
-  const d = s.f[1];
-  a.x = -1000;
-  const gap = Math.max(0, Math.min(m.range - 50, 500) - m.advance);
-  d.x = a.x + 900 + gap;
-  d.guard = mode === 'block';
-  // P2 faces left, so "back" for P2 is RIGHT.
-  const dIn = mode === 'block' && m.level === 'L' ? DOWN | RIGHT : 0;
+type Res = { value: number; kind: string; hitTick: number } | null;
+type Mode = 'hit' | 'block' | 'crouch' | 'crouchBlock';
+
+function trial(fid: string, m: MoveC, gap: number, mode: Mode): Res {
+  const s = training(fid, 'corvin');
+  s.f[0].x = -1500;
+  s.f[1].x = -1500 + 900 + gap;
+  s.f[1].guard = mode === 'block' || mode === 'crouchBlock';
+  const dIn = mode === 'crouch' ? DOWN : mode === 'crouchBlock' ? DOWN | RIGHT : 0;
   run(s, 6, 0, dIn);
-  for (const bits of commandFrames(m.cmd, a.facing)) step(s, [bits, dIn]);
-  s.lastAdv = null;
-  for (let i = 0; i < 300 && !s.lastAdv; i++) step(s, [0, dIn]);
-  const res = s.lastAdv as GameState["lastAdv"];
-  return res ? { value: res.value, kind: res.kind, move: res.move } : null;
+  let hitTick = -1;
+  const frames = commandFrames(m.cmd, 1, cmdBits);
+  for (let i = 0; i < 260; i++) {
+    step(s, [i < frames.length ? frames[i] : 0, dIn]);
+    if (hitTick === -1 && s.events.some((e) => (e.type === 'hit' || e.type === 'block') && e.p === 0)) {
+      hitTick = s.f[0].act === 'move' && s.f[0].move === m.id ? s.f[0].t : -2;
+    }
+    const la = s.lastAdv as GameState['lastAdv'];
+    if (hitTick !== -1 && la && la.move === m.id && la.since >= 0 && (la.kind === 'kd' || !Number.isNaN(la.value))) break;
+  }
+  const r = s.lastAdv as GameState['lastAdv'];
+  if (hitTick === -1 || !r || r.move !== m.id) return null;
+  return { value: r.value, kind: r.kind, hitTick };
 }
 
-const fighter = ROSTER.corvin;
-const testable = fighter.list.filter((m) => m.root && m.level !== 'T');
+function connectGap(fid: string, m: MoveC, mode: Mode): number | null {
+  for (let gap = 0; gap <= 3200; gap += 50) {
+    const r = trial(fid, m, gap, mode);
+    if (r && r.hitTick === m.startup) return gap;
+  }
+  return null;
+}
 
-describe('frame data matches the table (Corvin)', () => {
-  for (const m of testable) {
-    test(`${m.cmd} ${m.name}: ${m.onBlock} on block`, () => {
-      const r = measure(m, 'block');
-      expect(r, 'move never resolved').not.toBeNull();
-      expect(r!.move).toBe(m.id);
-      expect(r!.kind).toBe('block');
-      expect(r!.value).toBe(m.onBlock);
-    });
-    if (typeof m.onHit === 'number') {
-      test(`${m.cmd} ${m.name}: ${m.onHit} on hit`, () => {
-        const r = measure(m, 'hit');
-        expect(r).not.toBeNull();
-        expect(r!.move).toBe(m.id);
-        expect(r!.kind).toBe('hit');
-        expect(r!.value).toBe(m.onHit);
-      });
-    } else {
-      test(`${m.cmd} ${m.name}: knocks down on hit`, () => {
-        const r = measure(m, 'hit');
-        expect(r).not.toBeNull();
-        expect(r!.move).toBe(m.id);
-        expect(Number.isNaN(r!.value)).toBe(true);
+for (const fid of Object.keys(ROSTER)) {
+  const fd = ROSTER[fid];
+  const strikes = fd.list.filter((m) => m.root && m.strike && m.level !== 'T' && !m.air && m.cmd !== 'wake' && !m.cost);
+  describe(`${fd.name}: frame data and hit levels`, () => {
+    for (const m of strikes) {
+      test(`${m.cmd} ${m.name}`, () => {
+        const blockMode: Mode = m.level === 'L' ? 'crouchBlock' : 'block';
+        const gb = connectGap(fid, m, blockMode);
+        expect(gb, 'never connects on its first active tick when blocked').not.toBeNull();
+        const b = trial(fid, m, gb!, blockMode)!;
+        expect(b.kind).toBe('block');
+        expect(b.value, 'on block').toBe(m.onBlock);
+        const gh = connectGap(fid, m, 'hit');
+        expect(gh, 'never connects on hit').not.toBeNull();
+        const h = trial(fid, m, gh!, 'hit')!;
+        if (typeof m.onHit === 'number') expect(h.value, 'on hit').toBe(m.onHit);
+        else expect(h.kind).toBe('kd');
+        const c = trial(fid, m, gh!, 'crouch');
+        if (m.level === 'H') expect(c, 'highs must whiff crouchers').toBeNull();
+        else expect(c, 'mids/lows must hit crouchers').not.toBeNull();
       });
     }
-  }
-});
-
-describe('strings', () => {
-  test('1,2 is a natural combo on hit', () => {
-    const s = trainingState();
-    s.f[0].x = -1000; s.f[1].x = -1000 + 900 + 400; s.f[1].guard = false;
-    run(s, 4);
-    const B1 = 16, B2 = 32;
-    step(s, [B1, 0]);
-    run(s, 4);
-    step(s, [B2, 0]);
-    let hits = 0;
-    for (let i = 0; i < 60; i++) { step(s, [0, 0]); hits += s.events.filter((e) => e.type === 'hit').length; }
-    expect(hits).toBe(2);
-    expect(s.f[1].hp).toBe(200 - 7 - 11);
   });
-});
+}

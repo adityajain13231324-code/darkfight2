@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "lint:moves": "vitest run tests/lint-moves.test.ts"
+    "lint:moves": "vitest run tests/lint-moves.test.ts",
+    "bake": "vite-node tools/bake.ts",
+    "server": "node server/relay.mjs"
   },
   "dependencies": {
     "pixi.js": "8.6.6"

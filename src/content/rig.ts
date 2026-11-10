@@ -129,10 +129,10 @@ export type ShapeKind = 'weapon' | 'fClaw' | 'rClaw' | 'fHand' | 'fFoot' | 'rFoo
 export function shapeSegment(j: Joints, kind: ShapeKind): [number, number, number, number] {
   switch (kind) {
     case 'weapon': return [j.rHand[0], j.rHand[1], j.tip[0], j.tip[1]];
-    case 'rClaw': return [j.rElbow[0], j.rElbow[1], j.tip[0], j.tip[1]];
-    case 'fClaw': return [j.fElbow[0], j.fElbow[1], j.fTip[0], j.fTip[1]];
+    case 'rClaw': return [(j.rElbow[0] + j.rHand[0]) / 2, (j.rElbow[1] + j.rHand[1]) / 2, j.tip[0], j.tip[1]];
+    case 'fClaw': return [(j.fElbow[0] + j.fHand[0]) / 2, (j.fElbow[1] + j.fHand[1]) / 2, j.fTip[0], j.fTip[1]];
     case 'fHand': return [j.fElbow[0], j.fElbow[1], j.fHand[0], j.fHand[1]];
-    case 'fFoot': return [j.fKnee[0], j.fKnee[1], j.fToe[0], j.fToe[1]];
-    case 'rFoot': return [j.rKnee[0], j.rKnee[1], j.rToe[0], j.rToe[1]];
+    case 'fFoot': return [(j.fKnee[0] + j.fFoot[0]) / 2, (j.fKnee[1] + j.fFoot[1]) / 2, j.fToe[0], j.fToe[1]];
+    case 'rFoot': return [(j.rKnee[0] + j.rFoot[0]) / 2, (j.rKnee[1] + j.rFoot[1]) / 2, j.rToe[0], j.rToe[1]];
   }
 }
