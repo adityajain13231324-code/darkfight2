@@ -10,6 +10,9 @@ import { butcher, hermit, shogun, titan, wasp, widow } from './fighters/variants
 
 export const FIGHTER_DEFS: FighterDef[] = [corvin, lynx, hermit, shogun, butcher, titan, widow, wasp];
 
+/** Pelvis height above the root when airborne (matches the renderer). */
+export const rootHeight = (def: FighterDef): number => def.feet[2] + 0.04;
+
 export type Baked = Record<string, Record<string, number[][]>>;
 
 export function bakeFighter(def: FighterDef): Record<string, number[][]> {
@@ -18,8 +21,8 @@ export function bakeFighter(def: FighterDef): Record<string, number[][]> {
     if (!m.shape) continue;
     const ticks: number[][] = [];
     for (let t = 0; t <= moveTotal(m); t++) {
-      const seg = shapeSegment(solve(sampleMove(m, def.stance, t), def.rig), m.shape);
-      ticks.push(seg.map((v) => Math.round(v * 1000)));
+      const seg = shapeSegment(solve(sampleMove(m, def.stance, t), def.rig, m.air ? 'free' : 'auto', rootHeight(def)), m.shape);
+      ticks.push(seg.map((v) => Math.round(v * 1000) || 0)); // || 0 turns -0 into 0 so JSON round-trips exactly
     }
     out[m.id] = ticks;
   }

@@ -116,4 +116,11 @@ export const lynx: FighterDef = {
   maxHp: 950, walkF: 80, walkB: 64, dashV: 230,
   rig, visual: { coat: false, topknot: false, hood: true, scarf: true, bulk: 0.92 },
   stance, crouch, feet: FEET, moves,
+  anim: {
+    idleRate: 3.4, idleBob: 0.045,
+    guard: { ...arms(12, [75, 150], [55, 140], 15) },
+    win: { ...arms(-6, [150, 175], [160, 178], 0) },
+    intro: { ...arms(10, [95, 135], [35, 120], 20) },
+    showcase: { ...arms(22, [100, 100], [30, 80], -5) },
+  },
 };

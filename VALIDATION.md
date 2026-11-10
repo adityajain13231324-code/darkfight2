@@ -1,5 +1,7 @@
 # Validation report (11 Nov 2026)
 
+**Update after the animation overhaul:** 150/150 tests pass (new `tests/animation.test.ts`). See [docs/ANIMATION-REPORT.md](docs/ANIMATION-REPORT.md) for the full list, the real-relay soak (1,847 frames, no desync) and four bot matchups with no console errors. The section below is the earlier baseline.
+
 ## Automated (`npm test`): 35/35 passing
 - **bake.test**: committed `baked.json` equals a fresh bake of the animation data.
 - **frame-data.test** (26 moves, both fighters): each grounded strike is played against a dummy at a spacing where it connects on its first active tick; measured advantage on block and on hit equals the move table; highs whiff a crouching dummy; mids and lows hit it.

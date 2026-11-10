@@ -18,14 +18,19 @@ Canonical spec: [docs/SPEC.md](docs/SPEC.md). Status values: NOT STARTED · IN P
 | Wall splat (once per combo) | IMPLEMENTED | observed in bot matches ("wall" events) |
 | Wake-up: rise, back roll, wake-up kick | VERIFIED (roll) | systems test covers the roll |
 | Evasive rolls (down + forward/back twice): low profile, roll through | VERIFIED | roll tests: highs whiff, passes opponent, single down-back still guards |
-| Sculpted silhouette models (profiled body parts, jaw, heels, fists) | IMPLEMENTED | screenshots inspected; original shapes, not game assets |
+| Sculpted silhouette models (profiled body parts, jaw, heels, hands) | IMPLEMENTED | screenshots inspected; original shapes, not game assets |
+| Clip semantics (hold / reset), shortest-path rotation, ground modes (auto / body / free) | VERIFIED | tests/animation.test.ts |
+| Planted-foot walking, facing-continuous walk phase | VERIFIED (planted feet) | support-foot drift test; feel unreviewed live |
+| Per-fighter stance, guard, intro, victory, portrait poses | IMPLEMENTED | screenshots; see docs/ANIMATION-REPORT.md |
+| Two-hand (Titan) and paired-weapon (Hermit, Shogun, Butcher) motion | IMPLEMENTED | IK + lag tests; Titan grip within 0.06 from first active tick |
+| Animation inspector (?anim=1) | IMPLEMENTED | used in browser |
 | Flip jumps (front/back), roll somersaults, weighted stance bounce | IMPLEMENTED | screenshots mid-flip and mid-roll inspected |
 | Meter, magic (500), ranged ammo (3/round), signature cooldown | VERIFIED | systems tests |
 | Fighters: Corvin (sword), Lynx (claws, smoke) — unique kits | IMPLEMENTED | 21 moves each, playable, bot-usable |
 | Fighters: Hermit, Shogun, Butcher, Titan (sword kit), Widow, Wasp (claw kit) | IMPLEMENTED (kit variants) | own rig size, weapon, gear, health, speed, damage; frame data + geometry tested; unique movesets NOT STARTED |
 | Tekken-style select (portraits, grid, two cursors, arena picker) | IMPLEMENTED | screenshot inspected |
 | Bright painted arenas: Sunset Gate, Bamboo Grove (+ Ashen Ferry) | IMPLEMENTED | screenshots inspected |
-| Unique movesets/signatures for the six variant fighters | NOT STARTED | next content wave (Hermit lightning, Butcher quake, Wasp wall dive, Widow teleport, Shogun spectral slash, Titan shield/grab) |
+| Unique movesets/signatures for the six variant fighters | NOT STARTED (poses and grips are unique; swing paths are the base kit's) | next content wave (Hermit lightning, Butcher quake, Wasp wall dive, Widow teleport, Shogun spectral slash, Titan shield/grab) |
 | Weapon families | IN PROGRESS | 6 drawn (sword, katana, cleavers, greatsword, claws, fans); 2 unique move kits |
 | Arenas | IN PROGRESS | 3 of 8 |
 | Local versus, first to 1–5 | VERIFIED | browser match played to results screen |

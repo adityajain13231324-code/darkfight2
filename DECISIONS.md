@@ -10,4 +10,8 @@
 8. **Online: WebSocket relay first, rollback on top** (8-tick window, 2-tick input delay, frame-advantage throttling, 30-tick hashes). Only inputs travel in play. SF2Recomp-style build fingerprint check before matches.
 9. **Background tab policy (online):** the sim cannot run while the tab is hidden; the peer waits (rollback window) and a tab hidden for more than 10 s ends the connection on return.
 10. **Reference repos are studied, not copied.** Project Eclipse's recovered Nekki code/assets carry no licence and were not imported; only its documentation was read. Structures (attack edges, intervals, hit-reaction categories, fingerprints) were re-implemented with original data.
+12. **Clip keys carry forward.** A key lists only the channels it changes; omitted channels hold, the first key starts at the stance and the last resets to it. (Old behaviour drifted to the stance between keys.)
+13. **Visual root vs sim root.** Grounded poses rest the lowest foot on the floor; jumps and air attacks use a fixed pelvis height so the sim's y is the pelvis path and legs may tuck. The baker uses the same mode, so baked edges equal what is drawn.
+14. **Render smoothing is presentation only.** Blend times are chosen per action pair and are never read by the sim; contact poses start within ~20 ms and are not blended away.
+15. **Second weapon on paired fighters** follows the rear hand a few ticks later and is visual only; damage geometry stays the baked rear weapon.
 11. **Smoke concealment** is drawn as a faint ghost on both screens (no invulnerability, reveal on attack/damage/expiry), so it stays fair in same-screen local play.

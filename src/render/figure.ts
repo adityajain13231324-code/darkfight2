@@ -8,6 +8,7 @@ export const PX = 64;
 export interface DrawOpts {
   x: number; y: number; facing: number; color: number; alpha: number;
   coat: number; scarf: V[]; grow?: number; scale: number;
+  grip?: 'one' | 'two' | 'dual'; offLen?: number;
 }
 
 const add = (a: V, b: V, s = 1): V => [a[0] + b[0] * s, a[1] + b[1] * s];
@@ -69,7 +70,9 @@ export function drawFigure(g: Graphics, j: Joints, vis: FighterVisual, weapon: W
   };
   const fist = (hand: V, fa: V) => {
     const d = norm(sub(hand, fa));
-    g.circle(...tx(add(hand, d, 0.03)), (0.075 * k + grow) * S).fill(fill);
+    const p = perp(d);
+    g.circle(...tx(add(hand, d, 0.035)), (0.07 * k + grow) * S).fill(fill); // palm / knuckles
+    poly([add(add(hand, d, 0.0), p, 0.06 * k + grow), add(add(hand, d, 0.1 * k), p, 0.085 * k + grow), add(add(hand, d, 0.1 * k), p, 0.03 * k)]); // thumb
   };
   const leg = (hip: V, knee: V, foot: V, toe: V) => {
     bone(hip, knee, P_THIGH);
@@ -147,27 +150,26 @@ export function drawFigure(g: Graphics, j: Joints, vis: FighterVisual, weapon: W
     cleaver: { w: 0.1, curve: 0.0, tipW: 0.95 }, greatsword: { w: 0.07, curve: 0.0, tipW: 0.35 },
   };
   const blade = BLADES[weapon as string];
-  if (blade) {
-    const d = norm(sub(j.tip, j.rHand));
+  const drawBlade = (hand: V, tip: V, shape: { w: number; curve: number; tipW: number }) => {
+    const d = norm(sub(tip, hand));
     const p = perp(d);
-    const L = Math.hypot(j.tip[0] - j.rHand[0], j.tip[1] - j.rHand[1]);
+    const L = Math.hypot(tip[0] - hand[0], tip[1] - hand[1]);
     const back: V[] = [];
     const edge: V[] = [];
     for (let i = 0; i <= 8; i++) {
       const u = i / 8;
-      const c = add(add(j.rHand, d, L * u), p, Math.sin(u * Math.PI * 0.9) * blade.curve);
-      const w = blade.w * (1 - u * (1 - blade.tipW)) + grow * 0.5;
+      const c = add(add(hand, d, L * u), p, Math.sin(u * Math.PI * 0.9) * shape.curve);
+      const w = shape.w * (1 - u * (1 - shape.tipW)) + grow * 0.5;
       back.push(add(c, p, w));
       edge.unshift(add(c, p, -w * 0.55));
     }
     poly([...back, ...edge]);
-    bone(add(j.rHand, d, -0.18), j.rHand, [[0, 0.03, 0.03], [1, 0.032, 0.032]], 2);
-    bone(add(j.rHand, p, 0.1), add(j.rHand, p, -0.1), [[0, 0.03, 0.03], [1, 0.03, 0.03]], 2);
-    if (weapon === 'cleaver') { // second cleaver in the front hand
-      const fd2 = norm(sub(j.fHand, j.fElbow));
-      const fp = perp(fd2);
-      poly([add(j.fHand, fp, 0.03), add(add(j.fHand, fd2, 0.7), fp, 0.03), add(add(j.fHand, fd2, 0.75), fp, -0.12), add(add(j.fHand, fd2, 0.12), fp, -0.11)]);
-    }
+    bone(add(hand, d, -0.18), hand, [[0, 0.03, 0.03], [1, 0.032, 0.032]], 2); // grip
+    bone(add(hand, p, 0.1), add(hand, p, -0.1), [[0, 0.03, 0.03], [1, 0.03, 0.03]], 2); // guard
+  };
+  if (blade) {
+    drawBlade(j.rHand, j.tip, blade);
+    if (o.grip === 'dual') drawBlade(j.fHand, j.fTip, { ...blade, w: blade.w * 0.9 }); // paired weapon, animated by the clip
   } else if (weapon === 'fans') {
     for (const [hand, tip] of [[j.fHand, j.fTip], [j.rHand, j.tip]] as [V, V][]) {
       const d = norm(sub(tip, hand));

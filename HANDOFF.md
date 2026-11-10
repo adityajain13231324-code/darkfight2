@@ -18,6 +18,9 @@ Online: one player clicks Online → Create room and sends the link (`?room=CODE
 - `src/ai/bot.ts` bots and training dummies · `src/net/` rollback + room client · `server/relay.mjs`
 - `src/ui/` controls (keyboard, gamepad, touch), HUD
 
+## Animation inspector
+Open the game with `?anim=1` (for example http://localhost:5179/?anim=1) to scrub any fighter's move by tick, step frames, and overlay joints, the baked attack edge and hurtboxes.
+
 ## Adding a fighter
 Copy `src/content/fighters/lynx.ts`, author moves with `strike()` keys (arms in absolute angles via `R`/`F`/`arms`), add it to `FIGHTER_DEFS` in `bake.ts` and `ROSTER` in `roster.ts`, run `npm run bake`, then `npm test`. The frame-data test will tell you if a move's geometry contradicts its hit level.
 

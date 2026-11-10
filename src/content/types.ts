@@ -70,6 +70,17 @@ export interface FighterVisual {
   ponytail?: boolean;
 }
 
+/** Render-only animation personality. Never read by the simulation. */
+export interface AnimStyle {
+  idleRate: number;            // breathing speed (rad/s)
+  idleBob: number;             // knee bounce amplitude (units)
+  guard?: Partial<Pose>;       // blocking pose channels
+  win?: Partial<Pose>;         // victory pose
+  intro?: Partial<Pose>;       // ready pose held during the round intro
+  showcase?: Partial<Pose>;    // selection-portrait pose
+  lag?: number;                // dual weapons: ticks the front hand trails the rear hand
+}
+
 export interface FighterDef {
   id: string;
   name: string;
@@ -79,6 +90,7 @@ export interface FighterDef {
   style: string;
   difficulty: number;
   kit?: string; // shared move kit this fighter is built from
+  anim?: AnimStyle;
   maxHp: number;
   walkF: number;   // sub-units per tick
   walkB: number;

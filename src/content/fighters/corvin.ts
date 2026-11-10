@@ -130,4 +130,11 @@ export const corvin: FighterDef = {
   maxHp: 1000, walkF: 70, walkB: 56, dashV: 210,
   rig, visual: { coat: true, topknot: true, hood: false, scarf: false, bulk: 1 },
   stance, crouch, feet: FEET, moves,
+  anim: {
+    idleRate: 2.8, idleBob: 0.04,
+    guard: { ...F(0, 55, 125), ...R(0, 25, 118, 165) },
+    win: { ...F(-4, 20, 30), ...R(-4, 170, 175, 178) },
+    intro: { ...F(2, 90, 130), ...R(2, 40, 100, 150) },
+    showcase: { lean: 10, ...F(10, 75, 140), ...R(10, 95, 130, 160) },
+  },
 };

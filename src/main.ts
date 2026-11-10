@@ -8,6 +8,7 @@ import { createState, resetPositions, step } from './sim/sim';
 import type { GameState, MatchOpts, SimEvent } from './sim/types';
 import { installKeyboard, installTouch, readLocalVersus, readSolo } from './ui/controls';
 import { Hud } from './ui/hud';
+import { startInspector } from './ui/inspector';
 
 const STEP_MS = 1000 / 60;
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -445,6 +446,12 @@ function wireUi() {
 
 async function boot() {
   await renderer.init($('#game'));
+  if (new URLSearchParams(location.search).has('anim')) {
+    renderer.showAllShapes = true;
+    renderer.setArena('sunset');
+    startInspector(renderer);
+    return;
+  }
   await makePortraits();
   wireUi();
   setScreen('menu');
@@ -455,6 +462,9 @@ async function boot() {
     get state() { return state; }, get screen() { return screen; }, get mode() { return mode; }, get session() { return session; }, get room() { return room; },
     frames(n: number) { for (let i = 0; i < n; i++) tick(1000 / 60); renderer.app.render(); },
     onAction, cyclePick, lockPick,
+    /** Test/debug: choose both fighters directly. */
+    setPicks(a: string, b: string) { picks = [a, b]; refreshCards(); },
+    get renderer() { return renderer; },
   };
 }
 

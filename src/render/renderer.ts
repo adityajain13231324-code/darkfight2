@@ -1,10 +1,10 @@
-import { Application, Container, Graphics, Sprite, TilingSprite } from 'pixi.js';
-import { solve, type Joints, type Pose, type V, lerpPose } from '../content/rig';
+import { Application, Container, Graphics, Rectangle, Sprite, TilingSprite } from 'pixi.js';
+import { legsAt, solve, type Joints, type Pose, type V, lerpPose } from '../content/rig';
 import { ROSTER } from '../content/roster';
 import * as C from '../sim/constants';
 import type { GameState } from '../sim/types';
 import { drawAccents, drawFigure, PX } from './figure';
-import { animKey, poseFor } from './posing';
+import { animKey, blendTime, groundFor, poseFor } from './posing';
 import { ARENAS, Stage, STAGE_THEME } from './stage';
 import { grain, vignette } from './textures';
 import { Trail, Vfx } from './vfx';
@@ -20,10 +20,12 @@ class FighterView {
   private shown: Pose | null = null;
   private from: Pose | null = null;
   private blend = 1;
+  private blendDur = 0.07;
   private key = '';
   private coat = 0;
   private coatV = 0;
   private lastX = 0;
+  private walkPhase = 0;
   private scarf: V[] = [];
   private scarfV: V[] = [];
   joints: Joints | null = null;
@@ -35,14 +37,22 @@ class FighterView {
     const fd = ROSTER[f.fid];
     const def = fd.def;
     const frozen = s.hitstop > 0;
-    const target = poseFor(f, frozen ? 0 : alpha, time + this.idx * 1.7);
+    // Round reset / rematch / rollback teleport: drop all smoothing state instead of sliding into place.
+    const teleported = Math.abs(rx - this.lastX) > 2500;
+    if (teleported) { this.shown = null; this.from = null; this.key = ''; this.blend = 1; this.scarf = []; }
+    // Facing-relative walk phase accumulated from real movement: continuous through direction changes,
+    // stops and facing flips, so a supporting foot never skates.
+    if (!teleported && (f.act === 'walkF' || f.act === 'walkB')) this.walkPhase += ((rx - this.lastX) / 1000) * f.facing / (0.95 * def.rig.scale);
+    const introT = s.phase === 'intro' ? s.phaseT : 999;
+    const intro = introT >= 90 ? 0 : Math.min(1, introT / 30) * (introT > 70 ? 1 - (introT - 70) / 20 : 1);
+    const target = poseFor(f, frozen ? 0 : alpha, time + this.idx * 1.7, { walkPhase: this.walkPhase, intro });
     const key = animKey(f);
-    if (key !== this.key) { this.from = this.shown ?? target; this.blend = 0; this.key = key; }
-    // Short blend only on state changes; strikes keep their authored silhouette.
-    const blendTime = f.act === 'move' ? 0.035 : 0.075;
-    this.blend = Math.min(1, this.blend + dt / blendTime);
+    if (key !== this.key) { this.blendDur = blendTime(this.key, key); this.from = this.shown ?? target; this.blend = this.shown ? 0 : 1; this.key = key; }
+    // Per-action-pair blend: attacks and reactions snap, locomotion eases. Contact poses are never blended away.
+    this.blend = Math.min(1, this.blend + dt / this.blendDur);
     this.shown = this.blend < 1 && this.from ? lerpPose(this.from, target, this.blend) : target;
-    const j = solve(this.shown, def.rig);
+    const gm = groundFor(f);
+    const j = solve(this.shown, def.rig, gm.mode, def.feet[2] + 0.04, gm.blend);
     this.joints = j;
     const vel = (rx - this.lastX) / Math.max(dt, 1e-3);
     this.lastX = rx;
@@ -58,7 +68,7 @@ class FighterView {
     this.updateScarf(j, x, y, f.facing, dt);
     const smoke = f.smoke > 0;
     const alphaBody = smoke ? 0.14 + Math.sin(time * 9) * 0.04 : 1;
-    const opts = { x, y, facing: f.facing, color: 0x000000, alpha: alphaBody, coat: this.coat, scarf: this.scarf, scale: def.rig.scale };
+    const opts = { x, y, facing: f.facing, color: 0x000000, alpha: alphaBody, coat: this.coat, scarf: this.scarf, scale: def.rig.scale, grip: def.rig.grip, offLen: def.rig.offLen };
     this.rim.clear(); this.body.clear(); this.accents.clear();
     if (!smoke) {
       drawFigure(this.rim, j, def.visual, def.rig.weapon, { ...opts, color: STAGE_THEME.key, alpha: 0.16, grow: 0.02 });
@@ -82,6 +92,10 @@ class FighterView {
           const mid: V = [(j.tip[0] + j.rHand[0]) / 2, (j.tip[1] + j.rHand[1]) / 2];
           this.trail.push(tx(j.tip), tx(mid));
         } else this.trail.push(tx(pr[0]), tx(pr[1]));
+        if (def.rig.grip === 'dual' && m.shape === 'weapon') {
+          const mid2: V = [(j.fTip[0] + j.fHand[0]) / 2, (j.fTip[1] + j.fHand[1]) / 2];
+          this.trail2.push(tx(j.fTip), tx(mid2));
+        }
       }
     }
   }
@@ -106,7 +120,7 @@ class FighterView {
   }
 }
 
-export interface RenderOpts { hitboxes: boolean }
+export interface RenderOpts { hitboxes: boolean; joints?: boolean; shapes?: boolean }
 
 export class Renderer {
   app = new Application();
@@ -124,6 +138,8 @@ export class Renderer {
   private zoom = 1;
   private prev: number[] = [0, 0, 0, 0];
   private time = 0;
+  /** Inspector: draw the baked attack edge on every tick, not just active ones. */
+  showAllShapes = false;
 
   async init(parent: HTMLElement) {
     await this.app.init({ resizeTo: window, background: '#05080b', antialias: true, autoDensity: true, resolution: Math.min(2, window.devicePixelRatio || 1) });
@@ -164,16 +180,34 @@ export class Renderer {
   /** Silhouette portrait of a fighter in stance, as a data URL (for menus). */
   async portrait(fid: string, accent: number): Promise<string> {
     const def = ROSTER[fid].def;
+    const rig = def.rig;
+    const [ffx, frx, fh] = def.feet;
+    // Showcase pose: the fighter's own pose channels over a slightly wider, lower stance.
+    const pose = { ...def.stance, ...legsAt(rig, ffx * 1.2, frx * 1.15, fh * 0.94), ...def.anim?.showcase } as Pose;
+    const j = solve(pose, rig);
+    const o = { x: 0, y: 0, facing: 1, color: 0x000000, alpha: 1, coat: -10, scarf: [] as V[], scale: rig.scale, grip: rig.grip, offLen: rig.offLen };
     const g = new Graphics();
-    const j = solve(def.stance, def.rig);
-    const o = { x: 0, y: 0, facing: 1, color: 0x000000, alpha: 1, coat: -8, scarf: [] as V[], scale: def.rig.scale };
-    drawFigure(g, j, def.visual, def.rig.weapon, o);
+    drawFigure(g, j, def.visual, rig.weapon, o);
     const acc = new Graphics();
-    drawAccents(acc, j, o, accent, 0xffd58a, def.rig.weapon);
+    drawAccents(acc, j, o, accent, 0xffd58a, rig.weapon);
     const c = new Container();
     c.addChild(g, acc);
-    c.scale.set(1.6);
-    const url = await this.app.renderer.extract.base64({ target: c, resolution: 1 });
+    this.app.stage.addChild(c);
+    // Tight crop from the real silhouette bounds (weapon tips, hat/helmet, coat hem), with a margin.
+    const pts: V[] = [j.head, j.tip, j.fTip, j.rHand, j.fHand, j.rToe, j.fToe, j.rFoot, j.fFoot, j.pelvis, j.neck, j.rElbow, j.fElbow];
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const [x, y] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    const hr = j.headR;
+    if (def.visual.hat) { x0 = Math.min(x0, j.head[0] - hr * 3.3); x1 = Math.max(x1, j.head[0] + hr * 3.1); y1 = Math.max(y1, j.head[1] + hr * 1.4); }
+    if (def.visual.helmet) y1 = Math.max(y1, j.head[1] + hr * 3.4);
+    if (def.visual.coat) { y0 = Math.min(y0, j.pelvis[1] - 1.0 * rig.scale); x0 = Math.min(x0, j.pelvis[0] - 0.5); }
+    if (def.visual.ponytail) x0 = Math.min(x0, j.head[0] - hr * 3.2);
+    const m = 0.28;
+    const px = PX;
+    const frame = new Rectangle((x0 - m) * px, -(y1 + m) * px, (x1 - x0 + 2 * m) * px, (y1 - y0 + 2 * m) * px);
+    const res = Math.min(300 / frame.width, 400 / frame.height) * 1.5;
+    const url = await this.app.renderer.extract.base64({ target: c, frame, resolution: res });
+    this.app.stage.removeChild(c);
     c.destroy({ children: true });
     return url;
   }
@@ -210,12 +244,13 @@ export class Renderer {
     this.fighters[0].update(s, alpha, this.time, dt, rx0, ry0);
     this.fighters[1].update(s, alpha, this.time, dt, rx1, ry1);
     this.trailG.clear();
-    for (const fv of this.fighters) fv.trail.draw(this.trailG, PLAYER_COLORS[fv.idx], 1);
+    for (const fv of this.fighters) { fv.trail.draw(this.trailG, PLAYER_COLORS[fv.idx], 1); fv.trail2.draw(this.trailG, PLAYER_COLORS[fv.idx], 0.6); }
     this.drawProjectiles(s);
     this.vfx.update(dt);
     this.vfx.draw();
     this.boxes.clear();
-    if (opts.hitboxes) this.drawBoxes(s);
+    if (opts.hitboxes || opts.shapes) this.drawBoxes(s, !!opts.hitboxes, !!opts.shapes);
+    if (opts.joints) this.drawJoints(s);
 
     this.flash.clear();
     if (this.vfx.flash > 0) this.flash.rect(0, 0, w, h).fill({ color: 0xffffff, alpha: this.vfx.flash });
@@ -258,7 +293,22 @@ export class Renderer {
     }
   }
 
-  private drawBoxes(s: GameState) {
+  private drawJoints(s: GameState) {
+    const g = this.boxes;
+    for (let i = 0; i < 2; i++) {
+      const f = s.f[i];
+      const j = this.fighters[i].joints;
+      if (!j) continue;
+      const x = (f.x / 1000) * PX;
+      const y = -(f.y / 1000) * PX;
+      const pts: [V, number][] = [[j.pelvis, 0xffffff], [j.neck, 0xffffff], [j.head, 0xffffff], [j.fShoulder, 0x7dd3ff], [j.fElbow, 0x7dd3ff], [j.fHand, 0x7dd3ff], [j.rShoulder, 0xffd27a], [j.rElbow, 0xffd27a], [j.rHand, 0xffd27a], [j.tip, 0xff6a6a], [j.fTip, 0xff9a6a], [j.fHip, 0x9dff9d], [j.fKnee, 0x9dff9d], [j.fFoot, 0x9dff9d], [j.fToe, 0x9dff9d], [j.rHip, 0xc9a0ff], [j.rKnee, 0xc9a0ff], [j.rFoot, 0xc9a0ff], [j.rToe, 0xc9a0ff]];
+      for (const [v, c] of pts) g.circle(x + v[0] * f.facing * PX, y - v[1] * PX, 2.6).fill({ color: c });
+      // floor line and the lowest foot, to see ground contact
+      g.moveTo(x - 90, 0).lineTo(x + 90, 0).stroke({ width: 1, color: 0x6dff9e, alpha: 0.5 });
+    }
+  }
+
+  private drawBoxes(s: GameState, hurt = true, shapes = true) {
     const g = this.boxes;
     for (let i = 0; i < 2; i++) {
       const f = s.f[i];
@@ -266,14 +316,15 @@ export class Renderer {
       const crouch = f.act === 'crouch' || (f.act === 'move' && fd.moves[f.move]?.crouch) || f.crouchStun;
       const k = fd.heightPm / 1000;
       const set = crouch ? [[-300, 1900, 300, 2450], [-480, 900, 480, 1900], [-500, 0, 500, 900]] : [[-300, 2900, 300, 3700], [-430, 1400, 430, 2900], [-450, 0, 450, 1400]];
-      for (const b of set) {
+      if (hurt) for (const b of set) {
         const x0 = ((f.x + b[0]) / 1000) * PX, x1 = ((f.x + b[2]) / 1000) * PX;
         const y0 = -((f.y + b[1] * k) / 1000) * PX, y1 = -((f.y + b[3] * k) / 1000) * PX;
         g.rect(x0, y1, x1 - x0, y0 - y1).stroke({ width: 1.2, color: 0x6dff9e, alpha: 0.6 });
       }
-      if (f.act === 'move') {
+      if (shapes && f.act === 'move') {
         const m = fd.moves[f.move];
-        if (m?.shapes && f.t >= m.startup && f.t < m.startup + m.active) {
+        // In the inspector (all ticks) draw the edge at any tick; in play only while it is active.
+        if (m?.shapes && (!hurt || (f.t >= m.startup && f.t < m.startup + m.active) || this.showAllShapes)) {
           const sg = m.shapes[f.t];
           const ax = ((f.x + sg[0] * f.facing) / 1000) * PX, ay = -((f.y + sg[1]) / 1000) * PX;
           const bx = ((f.x + sg[2] * f.facing) / 1000) * PX, by = -((f.y + sg[3]) / 1000) * PX;

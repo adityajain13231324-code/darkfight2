@@ -19,6 +19,11 @@ export interface Rig {
   thigh: number; shin: number; torso: number; ua: number; fa: number;
   weapon: WeaponKind;
   weaponLen: number;
+  /** 'one': weapon in the rear hand. 'two': both hands on one weapon (front hand is solved by IK).
+   *  'dual': a second weapon in the front hand, animated by the clip. */
+  grip?: 'one' | 'two' | 'dual';
+  /** Length of the second (front) weapon relative to the main weapon, for 'dual'. */
+  offLen?: number;
 }
 
 export type V = [number, number];
@@ -34,9 +39,14 @@ const DEG = Math.PI / 180;
 const dir = (a: number): V => [Math.sin(a * DEG), -Math.cos(a * DEG)];
 const add = (a: V, b: V, s = 1): V => [a[0] + b[0] * s, a[1] + b[1] * s];
 
+/** Shortest signed angular difference in degrees, in [-180, 180). */
+export const wrapDeg = (d: number): number => ((((d + 180) % 360) + 360) % 360) - 180;
+
+/** Linear blend of joint angles. Whole-body rotation takes the SHORTEST path, so 360 and 0 are the same pose. */
 export function lerpPose(a: Pose, b: Pose, t: number): Pose {
   const o = {} as Pose;
   for (const k of POSE_KEYS) o[k] = a[k] + (b[k] - a[k]) * t;
+  o.rot = a.rot + wrapDeg(b.rot - a.rot) * t;
   return o;
 }
 
@@ -56,6 +66,23 @@ export function legIK(hx: number, foot: V, thigh: number, shin: number): [number
   return [th, shAbs - th];
 }
 
+/** Distance along the handle (units) from the rear hand to the front hand on two-hand weapons. */
+export const GRIP_OFFSET = 0.1;
+
+/** Two-bone arm IK. Returns [elbow, hand]; the elbow bends toward the lower solution. */
+export function armIK(S: V, T: V, a: number, b: number): [V, V] {
+  const dx = T[0] - S[0];
+  const dy = T[1] - S[1];
+  const d0 = Math.hypot(dx, dy) || 1e-6;
+  const d = Math.min((a + b) * 0.999, Math.max(Math.abs(a - b) * 1.001, d0));
+  const base = Math.atan2(dy, dx);
+  const A = Math.acos(Math.max(-1, Math.min(1, (a * a + d * d - b * b) / (2 * a * d))));
+  const e1: V = [S[0] + Math.cos(base + A) * a, S[1] + Math.sin(base + A) * a];
+  const e2: V = [S[0] + Math.cos(base - A) * a, S[1] + Math.sin(base - A) * a];
+  const elbow = e1[1] < e2[1] ? e1 : e2;
+  return [elbow, [S[0] + (dx / d0) * d, S[1] + (dy / d0) * d]];
+}
+
 /** Leg angles for feet planted at given local x, with the pelvis at height h. */
 export function legsAt(rig: Rig, fx: number, rx: number, h: number, fy = 0, ry = 0): Partial<Pose> {
   const T = rig.thigh * rig.scale;
@@ -65,8 +92,17 @@ export function legsAt(rig: Rig, fx: number, rx: number, h: number, fy = 0, ry =
   return { fTh, fSh, rTh, rSh };
 }
 
-/** Joint positions in local units: x toward the opponent, y up, lowest point on y=0. */
-export function solve(p: Pose, rig: Rig): Joints {
+/**
+ * How the solved body is placed vertically (local y, 0 = floor level of the fighter's root):
+ *  - 'auto': lowest foot/knee (or lowest body point when rotated) rests on the floor (grounded states)
+ *  - 'body': lowest point of the whole body rests on the floor (rolls, tumbling)
+ *  - 'free': the pelvis sits at a fixed root height, so legs may tuck or extend while the sim's y
+ *            stays the pelvis path (jumps and air attacks); freeBlend eases in from the grounded height.
+ */
+export type GroundMode = 'auto' | 'body' | 'free';
+
+/** Joint positions in local units: x toward the opponent, y up. See GroundMode for vertical placement. */
+export function solve(p: Pose, rig: Rig, ground: GroundMode = 'auto', rootH = 1.8, freeBlend = 1): Joints {
   const k = rig.scale;
   const pelvis: V = [p.px, 0];
   const up: V = [Math.sin(p.lean * DEG), Math.cos(p.lean * DEG)];
@@ -80,14 +116,20 @@ export function solve(p: Pose, rig: Rig): Joints {
   const rShoulder = add(sh, fwd, -p.twist * 0.16 * k);
   const fUA = p.fUA + p.lean;
   const fFA = fUA + p.fFA;
-  const fElbow = add(fShoulder, dir(fUA), rig.ua * k);
-  const fHand = add(fElbow, dir(fFA), rig.fa * k);
+  let fElbow = add(fShoulder, dir(fUA), rig.ua * k);
+  let fHand = add(fElbow, dir(fFA), rig.fa * k);
   const rUA = p.rUA + p.lean;
   const rFA = rUA + p.rFA;
   const rElbow = add(rShoulder, dir(rUA), rig.ua * k);
   const rHand = add(rElbow, dir(rFA), rig.fa * k);
   const tip = add(rHand, dir(rFA + p.wpn), rig.weaponLen * k);
-  const fTip = add(fHand, dir(fFA + p.wpn), (rig.weapon === 'claws' || rig.weapon === 'fans' ? rig.weaponLen : 0.05) * k);
+  if (rig.grip === 'two') {
+    // Front hand holds the handle just ahead of the rear hand, along the weapon axis.
+    const grip = add(rHand, dir(rFA + p.wpn), GRIP_OFFSET * k);
+    [fElbow, fHand] = armIK(fShoulder, grip, rig.ua * k, rig.fa * k);
+  }
+  const offTip = rig.grip === 'dual' ? rig.weaponLen * (rig.offLen ?? 0.85) : rig.weapon === 'claws' || rig.weapon === 'fans' ? rig.weaponLen : 0.05;
+  const fTip = add(fHand, dir(fFA + p.wpn), offTip * k);
   const hipOff = 0.05 + p.twist * 0.04;
   const fHip = add(pelvis, fwd, hipOff * k);
   const rHip = add(pelvis, fwd, -hipOff * k);
@@ -118,8 +160,9 @@ export function solve(p: Pose, rig: Rig): Joints {
   }
   const legMin = Math.min(j.fKnee[1], j.fFoot[1], j.rKnee[1], j.rFoot[1], j.fToe[1], j.rToe[1]);
   const bodyMin = Math.min(legMin, j.head[1] - headR, j.neck[1], j.fHand[1], j.rHand[1], j.fElbow[1], j.rElbow[1], j.pelvis[1] - 0.2);
-  const w = Math.min(1, Math.abs(p.rot) / 60);
-  const shift = -(legMin * (1 - w) + bodyMin * w) + 0.04;
+  const w = ground === 'body' ? 1 : Math.min(1, Math.abs(wrapDeg(p.rot)) / 60);
+  const autoShift = -(legMin * (1 - w) + bodyMin * w) + 0.04;
+  const shift = ground === 'free' ? autoShift + (rootH - j.pelvis[1] - autoShift) * freeBlend : autoShift;
   for (const key of JOINT_POINTS) (j[key] as V)[1] += shift;
   return j;
 }
